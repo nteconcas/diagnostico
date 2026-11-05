@@ -17,6 +17,15 @@ import { Bloco, Campo, CampoNumero, CampoTexto, Metrica } from '../components/ca
 
 const SUGESTOES_ESPACOS = ['Biblioteca', 'Refeitório', 'Área externa', 'Área de lazer']
 
+interface RascunhoLocal {
+  atualizadoEm: number
+  dados: Dados
+}
+
+function chaveRascunhoLocal(diagnosticoId: string, usuarioId?: string): string {
+  return `diagnostico-rascunho:${usuarioId ?? 'usuario'}:${diagnosticoId}`
+}
+
 export function Formulario() {
   const { id } = useParams<{ id: string }>()
   const navegar = useNavigate()
@@ -45,8 +54,10 @@ export function Formulario() {
   const versaoDados = useRef(0)
   const ultimaVersaoSalva = useRef(0)
   const ultimaVersaoKeepalive = useRef(-1)
+  const ultimaAtualizacaoLocal = useRef(0)
   const filaSalvamento = useRef<Promise<void>>(Promise.resolve())
   const dadosAtuais = useRef(dados)
+  const erroArmazenamentoLocal = useRef(false)
 
   useLayoutEffect(() => {
     dadosAtuais.current = dados
@@ -67,7 +78,29 @@ export function Formulario() {
     api<Diagnostico>(`/api/diagnosticos/${id}`)
       .then((d) => {
         setDiag(d)
-        const dadosCarregados = { ...dadosVazios(), ...d.dados }
+        let dadosCarregados = { ...dadosVazios(), ...d.dados }
+        if (d.status === 'rascunho') {
+          try {
+            const chave = chaveRascunhoLocal(d.id, usuario?.id)
+            const bruto = localStorage.getItem(chave)
+            if (bruto) {
+              const local: RascunhoLocal = JSON.parse(bruto)
+              if (
+                Number.isFinite(local.atualizadoEm) &&
+                local.atualizadoEm > new Date(d.atualizado_em).getTime() &&
+                local.dados &&
+                typeof local.dados === 'object'
+              ) {
+                dadosCarregados = { ...dadosVazios(), ...local.dados }
+                setErroSalvamento('Rascunho local recuperado; salvando no servidor.')
+              } else {
+                localStorage.removeItem(chave)
+              }
+            }
+          } catch {
+            setErroSalvamento('Não foi possível ler a cópia local do rascunho.')
+          }
+        }
         if (d.status === 'rascunho' && usuario?.nome) {
           dadosCarregados.responsavel = usuario.nome
         } else {
@@ -84,7 +117,7 @@ export function Formulario() {
         setErroFatal((e as Error).message)
         setCarregando(false)
       })
-  }, [id, novo, usuario?.nome])
+  }, [id, novo, usuario?.id, usuario?.nome])
 
   const enviado = diag?.status === 'enviado'
   const escolaAtualId = diag?.escola_id ?? escolaId
@@ -122,6 +155,18 @@ export function Formulario() {
     setEstadoSalvamento('pendente')
     setErroSalvamento('')
 
+    const atualizadoEm = Math.max(Date.now(), ultimaAtualizacaoLocal.current + 1)
+    ultimaAtualizacaoLocal.current = atualizadoEm
+    try {
+      localStorage.setItem(
+        chaveRascunhoLocal(diag.id, usuario?.id),
+        JSON.stringify({ atualizadoEm, dados } satisfies RascunhoLocal),
+      )
+      erroArmazenamentoLocal.current = false
+    } catch {
+      erroArmazenamentoLocal.current = true
+    }
+
     function salvar(snapshot: Dados, versaoSnapshot: number) {
       if (versaoSnapshot === versaoDados.current) setEstadoSalvamento('salvando')
       const request = filaSalvamento.current.then(() =>
@@ -135,9 +180,20 @@ export function Formulario() {
         () => {
           ultimaVersaoSalva.current = Math.max(ultimaVersaoSalva.current, versaoSnapshot)
           if (versaoSnapshot !== versaoDados.current) return
+          try {
+            const chave = chaveRascunhoLocal(diag.id, usuario?.id)
+            const bruto = localStorage.getItem(chave)
+            if (bruto && JSON.parse(bruto).atualizadoEm <= atualizadoEm) {
+              localStorage.removeItem(chave)
+            }
+          } catch {
+            erroArmazenamentoLocal.current = true
+          }
           setSalvoEm(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
           setEstadoSalvamento('salvo')
-          setErroSalvamento('')
+          setErroSalvamento(
+            erroArmazenamentoLocal.current ? 'O servidor salvou, mas a cópia local não pôde ser atualizada.' : '',
+          )
         },
         (erro: unknown) => {
           if (versaoSnapshot !== versaoDados.current) return
@@ -158,7 +214,7 @@ export function Formulario() {
       window.clearTimeout(timer.current)
       window.clearTimeout(retryTimer.current)
     }
-  }, [dados, diag])
+  }, [dados, diag, usuario?.id])
 
   // Envia a versão mais recente mesmo quando a página é ocultada ou encerrada.
   useEffect(() => {
@@ -168,6 +224,17 @@ export function Formulario() {
       const versao = versaoDados.current
       if (versao <= ultimaVersaoSalva.current || versao === ultimaVersaoKeepalive.current) return
       ultimaVersaoKeepalive.current = versao
+
+      try {
+        const atualizadoEm = Math.max(Date.now(), ultimaAtualizacaoLocal.current + 1)
+        ultimaAtualizacaoLocal.current = atualizadoEm
+        localStorage.setItem(
+          chaveRascunhoLocal(diag.id, usuario?.id),
+          JSON.stringify({ atualizadoEm, dados: dadosAtuais.current } satisfies RascunhoLocal),
+        )
+      } catch {
+        erroArmazenamentoLocal.current = true
+      }
 
       const token = tokenAtual()
       void fetch(`/api/diagnosticos/${diag.id}/rascunho`, {
@@ -210,7 +277,7 @@ export function Formulario() {
       document.removeEventListener('visibilitychange', aoMudarVisibilidade)
       salvarAoSair()
     }
-  }, [diag])
+  }, [diag, usuario?.id])
 
   async function enviar() {
     if (!diag) return
