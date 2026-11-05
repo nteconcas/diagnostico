@@ -1,19 +1,25 @@
+# syntax=docker/dockerfile:1.7
 FROM node:20-bookworm-slim AS frontend-build
 
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --prefer-offline --no-audit --no-fund
 COPY frontend/ ./
-RUN npm run build
+RUN NODE_OPTIONS=--max-old-space-size=768 npm run build
 
 FROM golang:1.23-bookworm AS backend-build
 
 WORKDIR /src
+ENV GOMAXPROCS=2
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 COPY . ./
 COPY --from=frontend-build /src/frontend/dist ./frontend/dist
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/diagnostico-escolar .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -p=2 -trimpath -ldflags="-s -w" -o /out/diagnostico-escolar .
 
 FROM debian:bookworm-slim
 
