@@ -18,7 +18,7 @@ const tplHTML = `<!DOCTYPE html>
   .faixa p { opacity:.9; font-size: 13px; margin-top: 4px; }
   .capa h2 { font-size: 28px; margin: 30px 30px 4px; color: var(--azul-esc); }
   .capa .nte { color: var(--cinza); font-size: 15px; margin-bottom: 18px; }
-  .capa img.fachada { max-width: 92%; max-height: 480px; border-radius: 12px; box-shadow: 0 10px 30px rgba(15,23,42,.18); }
+  .capa img.fachada { width: 92%; max-width: 720px; aspect-ratio: 4 / 3; object-fit: contain; border: 1px solid var(--linha); border-radius: 8px; background: #fff; }
   .meta { display:flex; flex-wrap: wrap; gap: 12px; justify-content:center; margin: 26px 30px 0; }
   .meta div { background:#f8fafc; border:1px solid var(--linha); border-radius: 10px; padding: 10px 16px; font-size: 13.5px; }
   .meta b { color: var(--cinza); display:block; font-size: 11.5px; text-transform: uppercase; letter-spacing:.5px; }
@@ -37,7 +37,7 @@ const tplHTML = `<!DOCTYPE html>
   .legenda { font-size: 12.5px; color: var(--cinza); margin-bottom: 12px; }
   .galeria { display:flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 16px; }
   .galeria figure { break-inside: avoid; }
-  .galeria img { width: 200px; height: 150px; object-fit: cover; border-radius: 10px; border:1px solid var(--linha); }
+  .galeria img { width: 200px; height: 150px; object-fit: contain; background:#fff; border-radius: 8px; border:1px solid var(--linha); }
   .galeria figcaption { font-size: 11.5px; color: var(--cinza); text-align:center; margin-top:3px; max-width: 200px; }
   .lab, .espaco, .projeto { border: 1px solid var(--linha); border-radius: 12px; padding: 14px 18px; margin: 10px 0 14px; break-inside: avoid; }
   .lab h4, .espaco h4, .projeto h4 { color: var(--verde); font-size: 15.5px; margin-bottom: 4px; }

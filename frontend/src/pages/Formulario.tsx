@@ -62,6 +62,7 @@ export function Formulario() {
   }, [id, novo])
 
   const enviado = diag?.status === 'enviado'
+  const escolaAtualId = diag?.escola_id ?? escolaId
 
   function atualizar(fn: (d: Dados) => Dados) {
     if (enviado) return
@@ -314,6 +315,7 @@ export function Formulario() {
               ) : (
                 <FotoUpload
                   fotos={[]}
+                  escolaId={escolaAtualId}
                   max={1}
                   textoBotao="Enviar foto"
                   onChange={(fs) => set('foto_gestor', fs.length > 0 ? fs[0] : null)}
@@ -340,6 +342,7 @@ export function Formulario() {
               ) : (
                 <FotoUpload
                   fotos={[]}
+                  escolaId={escolaAtualId}
                   max={1}
                   textoBotao="Clique para enviar a foto da fachada"
                   onChange={(fs) => set('foto_fachada', fs.length > 0 ? fs[0] : null)}
@@ -598,6 +601,7 @@ export function Formulario() {
             </p>
             <FotoUpload
               fotos={dados.fotos_antes}
+              escolaId={escolaAtualId}
               max={6}
               min={3}
               onChange={(fs) => set('fotos_antes', fs)}
@@ -612,6 +616,7 @@ export function Formulario() {
             </p>
             <FotoUpload
               fotos={dados.fotos_atual}
+              escolaId={escolaAtualId}
               max={6}
               min={3}
               onChange={(fs) => set('fotos_atual', fs)}
@@ -663,6 +668,7 @@ export function Formulario() {
                         />
                         <FotoUpload
                           fotos={lab.fotos}
+                          escolaId={escolaAtualId}
                           max={6}
                           onChange={(fs) => set('labs', { ...dados.labs, [chave]: { ...lab, fotos: fs } })}
                         />
@@ -717,6 +723,7 @@ export function Formulario() {
                   />
                   <FotoUpload
                     fotos={lo.fotos}
+                    escolaId={escolaAtualId}
                     max={6}
                     onChange={(fs) => {
                       const outros = [...dados.labs.outros]
@@ -830,6 +837,7 @@ export function Formulario() {
                 </div>
                 <FotoUpload
                   fotos={esp.fotos}
+                  escolaId={escolaAtualId}
                   max={6}
                   textoBotao="Adicionar fotos"
                   onChange={(fs) => {
@@ -905,6 +913,7 @@ export function Formulario() {
                   <label className="rotulo">Fotos do projeto {i + 1}</label>
                   <FotoUpload
                     fotos={proj.fotos}
+                    escolaId={escolaAtualId}
                     max={3}
                     textoBotao="Adicionar"
                     onChange={(fs) => {

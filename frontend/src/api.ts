@@ -195,10 +195,11 @@ export async function api<T>(caminho: string, opcoes?: RequestInit): Promise<T> 
   return resposta.json()
 }
 
-export function uploadFoto(arquivo: File): Promise<Foto> {
+export function uploadFoto(arquivo: File, escolaId: string): Promise<Foto> {
   return new Promise((ok, falhou) => {
     const fd = new FormData()
     fd.append('arquivo', arquivo)
+    fd.append('escola_id', escolaId)
     const xhr = new XMLHttpRequest()
     xhr.open('POST', '/api/fotos')
     const t = tokenAtual()

@@ -3,6 +3,7 @@ import { Foto, fotoThumb, uploadFoto } from '../api'
 
 interface Props {
   fotos: Foto[]
+  escolaId: string
   max: number
   min?: number
   onChange: (fotos: Foto[]) => void
@@ -10,7 +11,7 @@ interface Props {
 }
 
 // FotoUpload envia as imagens imediatamente e devolve os metadados para o rascunho.
-export function FotoUpload({ fotos, max, min, onChange, textoBotao = 'Adicionar' }: Props) {
+export function FotoUpload({ fotos, escolaId, max, min, onChange, textoBotao = 'Adicionar' }: Props) {
   const refInput = useRef<HTMLInputElement>(null)
   const [enviando, setEnviando] = useState(0)
   const [erro, setErro] = useState('')
@@ -23,7 +24,7 @@ export function FotoUpload({ fotos, max, min, onChange, textoBotao = 'Adicionar'
     for (const arquivo of Array.from(arquivos)) {
       if (fotos.length + novas.length >= max) break
       try {
-        novas.push(await uploadFoto(arquivo))
+        novas.push(await uploadFoto(arquivo, escolaId))
       } catch (e) {
         setErro((e as Error).message)
       }

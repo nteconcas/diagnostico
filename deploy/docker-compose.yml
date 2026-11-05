@@ -1,14 +1,14 @@
 # Formulário de Diagnóstico Escolar — app + PostgreSQL, tudo em containers.
-# Uso (a partir da pasta extraída):
-#   docker compose -f deploy/docker-compose.yml up -d --build
-# Depois acesse http://localhost:8080  (login inicial: admin / admin123)
+# Uso na raiz do projeto após copiar .env.example para .env e configurá-lo:
+#   docker compose --env-file .env -f deploy/docker-compose.yml up -d --build
+# Depois acesse http://localhost:8080
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: diagnostico
-      POSTGRES_PASSWORD: TROQUE_ESSA_SENHA
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD no .env}
       POSTGRES_DB: diagnostico
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -20,11 +20,11 @@ services:
     restart: unless-stopped
     depends_on:
       - db
+    env_file:
+      - ../.env
     environment:
-      DATABASE_URL: postgres://diagnostico:TROQUE_ESSA_SENHA@db:5432/diagnostico?sslmode=disable
-      PORT: "8080"
+      DATABASE_URL: postgres://diagnostico:${POSTGRES_PASSWORD}@db:5432/diagnostico?sslmode=disable
       DATA_DIR: /dados
-      TZ: America/Sao_Paulo
     ports:
       - "8080:8080"
     volumes:

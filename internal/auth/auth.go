@@ -5,6 +5,7 @@ import (
         "context"
         "crypto/rand"
         "encoding/hex"
+        "fmt"
         "log"
         "net/http"
         "strings"
@@ -158,6 +159,9 @@ func SeedAdmin(pool *pgxpool.Pool, username, senha string) error {
         if n > 0 {
                 return nil
         }
+        if senha == "" {
+                return fmt.Errorf("defina ADMIN_SENHA antes de iniciar com o banco vazio")
+        }
         hash, err := Hash(senha)
         if err != nil {
                 return err
@@ -168,6 +172,6 @@ func SeedAdmin(pool *pgxpool.Pool, username, senha string) error {
         if err != nil {
                 return err
         }
-        log.Printf("ATENÇÃO: usuário administrador inicial criado — %s / %s (troque a senha em Usuários)", username, senha)
+        log.Printf("Usuário administrador inicial criado: %s", username)
         return nil
 }

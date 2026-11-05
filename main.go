@@ -14,6 +14,7 @@ import (
 	"diagnostico-escolar/internal/auth"
 	"diagnostico-escolar/internal/db"
 	"diagnostico-escolar/internal/fsstore"
+	"diagnostico-escolar/internal/r2store"
 )
 
 func ambiente(chave, padrao string) string {
@@ -27,6 +28,10 @@ func main() {
 	porta := ambiente("PORT", "8080")
 	dsn := ambiente("DATABASE_URL", "postgres://diag:diag@localhost:5433/diagnostico?sslmode=disable")
 	dirDados := ambiente("DATA_DIR", "data")
+	clienteR2, err := r2store.NovoDoAmbiente()
+	if err != nil {
+		log.Fatalf("Configuração do Cloudflare R2 inválida: %v", err)
+	}
 
 	pool, err := db.Conectar(dsn)
 	if err != nil {
@@ -35,11 +40,11 @@ func main() {
 	if err := db.Migrar(pool); err != nil {
 		log.Fatalf("Erro ao aplicar o schema: %v", err)
 	}
-	if err := auth.SeedAdmin(pool, ambiente("ADMIN_USUARIO", "admin"), ambiente("ADMIN_SENHA", "admin123")); err != nil {
+	if err := auth.SeedAdmin(pool, ambiente("ADMIN_USUARIO", "admin"), os.Getenv("ADMIN_SENHA")); err != nil {
 		log.Fatalf("Erro ao criar o usuário administrador inicial: %v", err)
 	}
 
-	loja := &fsstore.Loja{Dir: dirDados}
+	loja := &fsstore.Loja{Dir: dirDados, R2: clienteR2}
 	if err := os.MkdirAll(loja.UploadsDir(), 0o755); err != nil {
 		log.Fatalf("Erro ao criar a pasta de uploads: %v", err)
 	}

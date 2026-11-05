@@ -9,10 +9,7 @@ User=diagnostico
 Group=diagnostico
 WorkingDirectory=/opt/diagnostico-escolar
 ExecStart=/opt/diagnostico-escolar/diagnostico-escolar
-Environment=PORT=8080
-Environment=DATABASE_URL=postgres://diagnostico:TROQUE_ESSA_SENHA@localhost:5432/diagnostico?sslmode=disable
-Environment=DATA_DIR=/opt/diagnostico-escolar/data
-Environment=TZ=America/Sao_Paulo
+EnvironmentFile=/opt/diagnostico-escolar/.env
 Restart=always
 RestartSec=3
 NoNewPrivileges=true

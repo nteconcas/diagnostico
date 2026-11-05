@@ -7,8 +7,8 @@ infraestrutura (com registro fotográfico), espaços, projetos e ofertas de curs
 
 - **Backend:** Go 1.23+ · API REST (net/http) · PostgreSQL (pgx) · sessões em banco · bcrypt
 - **Frontend:** React 18 + Vite (SPA) — compilado e embutido no binário via `go:embed`
-- **Fotos:** enviadas para `DATA_DIR/uploads`, com miniatura (480px) e versão média (1100px)
-  geradas no servidor; orientação EXIF corrigida automaticamente
+- **Fotos:** armazenadas em bucket privado Cloudflare R2, organizadas por slug da escola;
+  miniatura, versão média e imagem 4:3 para relatórios são geradas no servidor
 - **Relatórios:** PDF (gofpdf), DOCX (OOXML nativo) e HTML autossuficiente (imagens em base64)
 - **Acesso:** login por usuário/senha com papéis `admin` (gerencia escolas e usuários) e
   `preenchador` (preenche diagnósticos)
@@ -43,6 +43,18 @@ diagnostico-escolar/
 └── diagnostico-escolar         # binário já compilado (linux/amd64)
 ```
 
+## Configuração de ambiente
+
+Copie `.env.example` para `.env` e preencha as credenciais do PostgreSQL, do administrador
+inicial e do Cloudflare R2. O bucket deve permanecer privado; crie uma chave S3 limitada a
+esse bucket. O app usa o endpoint padrão `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`;
+`R2_ENDPOINT` só é necessário se o endpoint for personalizado. O arquivo `.env` não deve ser
+versionado nem exposto publicamente.
+
+O `.env.example` é um modelo: o binário não carrega arquivos `.env` por conta própria. O
+Docker Compose e a unit systemd fornecidos carregam as variáveis por configuração. Para
+execução manual no Linux, exporte as variáveis antes de iniciar o binário.
+
 ## 3. Compilação
 
 ```bash
@@ -71,8 +83,7 @@ CREATE DATABASE diagnostico OWNER diagnostico;
 Ou use o Docker Compose incluído:
 
 ```bash
-cd deploy
-docker compose up -d        # sobe postgres:16 na porta 5432
+docker compose --env-file .env -f deploy/docker-compose.yml up -d
 ```
 
 As tabelas são criadas automaticamente na primeira execução do app
@@ -81,10 +92,9 @@ As tabelas são criadas automaticamente na primeira execução do app
 ## 5. Execução
 
 ```bash
-export DATABASE_URL="postgres://diagnostico:TROQUE_ESSA_SENHA@localhost:5432/diagnostico?sslmode=disable"
-export DATA_DIR="/opt/diagnostico-escolar/data"   # fotos (uploads) ficam aqui
-export PORT=8080
-export TZ=America/Sao_Paulo
+set -a
+source .env
+set +a
 
 ./diagnostico-escolar
 ```
@@ -95,24 +105,29 @@ export TZ=America/Sao_Paulo
 | `DATABASE_URL` | `postgres://diag:diag@localhost:5433/diagnostico?sslmode=disable` | conexão PostgreSQL |
 | `DATA_DIR` | `data` | pasta das fotos (`uploads/`) — **inclua no backup** |
 | `ADMIN_USUARIO` | `admin` | usuário administrador criado no 1º boot |
-| `ADMIN_SENHA` | `admin123` | senha inicial (**troque em Usuários**) |
+| `ADMIN_SENHA` | obrigatória em banco vazio | senha inicial do administrador |
+| `R2_ACCOUNT_ID` | — | ID da conta Cloudflare |
+| `R2_BUCKET` | — | nome do bucket privado |
+| `R2_ACCESS_KEY_ID` | — | access key S3 do R2 |
+| `R2_SECRET_ACCESS_KEY` | — | secret key S3 do R2 |
+| `R2_ENDPOINT` | endpoint padrão da conta | endpoint S3 personalizado (opcional) |
 | `TZ` | do sistema | fuso horário exibido nos relatórios |
 
-**Primeiro acesso:** `http://SEU_SERVIDOR:8080` → entre com o usuário administrador exibido
-no log e troque a senha em **Usuários**.
+**Primeiro acesso:** entre com as credenciais definidas em `ADMIN_USUARIO` e `ADMIN_SENHA`.
 
 ## 6. Instalação como serviço (systemd)
 
 ```bash
-# 1. binário + dados no servidor
+# 1. binário, configuração e dados no servidor
 sudo mkdir -p /opt/diagnostico-escolar/data
 sudo cp diagnostico-escolar /opt/diagnostico-escolar/
+sudo cp .env /opt/diagnostico-escolar/.env
+sudo chmod 600 /opt/diagnostico-escolar/.env
 sudo useradd -r -s /usr/sbin/nologin diagnostico
 sudo chown -R diagnostico:diagnostico /opt/diagnostico-escolar
 
-# 2. edite a senha do banco dentro da unit
+# 2. instale a unit systemd
 sudo cp deploy/diagnostico-escolar.service /etc/systemd/system/
-sudo nano /etc/systemd/system/diagnostico-escolar.service
 
 # 3. ative
 sudo systemctl daemon-reload
@@ -122,8 +137,7 @@ sudo systemctl status diagnostico-escolar
 
 Logs: `journalctl -u diagnostico-escolar -f`.
 
-Para publicar em `http://diagnostico.sua rede/` sem porta, coloque um Nginx/Apache na frente
-como proxy reverso para `127.0.0.1:8080`.
+Configure um proxy reverso com HTTPS para encaminhar a aplicação em `127.0.0.1:8080`.
 
 ## 7. Backup
 
@@ -131,11 +145,12 @@ como proxy reverso para `127.0.0.1:8080`.
 # dados do banco
 pg_dump -U diagnostico diagnostico > backup-diagnostico.sql
 
-# fotos
-tar czf backup-fotos.tgz /opt/diagnostico-escolar/data/uploads
+# cache local opcional; as imagens originais e variantes ficam no bucket R2
+tar czf backup-fotos-cache.tgz /opt/diagnostico-escolar/data/uploads
 ```
 
-Restore: `psql -U diagnostico diagnostico < backup-diagnostico.sql` e extrair o tar em `DATA_DIR`.
+Restore: restaure o banco e mantenha o bucket R2; o cache local pode ser reconstruído a partir
+dele. Garanta também que as credenciais R2 do `.env` estejam disponíveis.
 
 ## 8. Uso no dia a dia
 

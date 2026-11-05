@@ -17,7 +17,7 @@ func caminhoFoto(id string) string {
 	if id == "" {
 		return ""
 	}
-	return filepath.Join(DirFotos, id+".m.jpg")
+	return filepath.Join(DirFotos, id+".r.jpg")
 }
 
 // b64 devolve o conteúdo do arquivo em base64 (imagens embutidas no HTML).

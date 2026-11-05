@@ -298,6 +298,10 @@ func (s *Servidor) enviarRelatorio(w http.ResponseWriter, r *http.Request, forma
                 negadoEscola(w)
                 return
         }
+        if err := s.prepararFotosRelatorio(r.Context(), d.Dados); err != nil {
+                erroJSON(w, 500, "Erro ao carregar imagens do relatório")
+                return
+        }
         u := auth.UsuarioDoCtx(r)
         re := report.Montar(report.Entrada{Diag: d, GeradoPor: u.Nome})
         var conteudo []byte
