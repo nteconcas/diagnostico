@@ -523,6 +523,25 @@ table.dados tr:hover td { background: #f8fbff; }
 }
 .formulario-pagina .aviso { border-radius: 14px; line-height: 1.6; }
 .formulario-pagina #revisao .btn-verde { min-height: 48px; padding: 12px 22px; }
+.rascunho-barra {
+  position: sticky;
+  top: 82px;
+  z-index: 25;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 16px;
+  padding: 14px 18px;
+  border: 1px solid #bbf7d0;
+  border-radius: 14px;
+  background: #f0fdf4;
+  box-shadow: 0 5px 16px rgba(15, 23, 42, 0.08);
+}
+.rascunho-barra-texto { display: grid; gap: 3px; color: #166534; font-size: 13px; }
+.rascunho-barra-texto > span { color: #475569; }
+.rascunho-barra-texto > .rascunho-confirmacao { color: #166534; font-weight: 600; }
+.rascunho-botao { min-height: 46px; flex: 0 0 auto; }
 .espaco-editor { display: grid; gap: 14px; }
 .espaco-editor-cabeca { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .espaco-editor-cabeca h4 { margin: 0; }
@@ -554,6 +573,14 @@ table.dados tr:hover td { background: #f8fbff; }
     gap: 8px;
   }
   .formulario-cabecalho-status .indicador-salvo { width: auto; font-size: 12px; }
+  .rascunho-barra {
+    top: 0;
+    margin: 0 -12px 14px;
+    padding: 12px;
+    border-radius: 0;
+  }
+  .rascunho-barra-texto { font-size: 12px; }
+  .rascunho-botao { min-height: 44px; padding: 10px 12px; white-space: nowrap; }
   .formulario-pagina nav.secoes {
     position: sticky;
     top: 0;

@@ -454,18 +454,31 @@ export function Formulario() {
               )
             )}
           </div>
-          {diag && !enviado && (
-            <button
-              type="button"
-              className="btn-primario btn-mini"
-              disabled={estadoSalvamento === 'salvando'}
-              onClick={salvarRascunho}
-            >
-              {estadoSalvamento === 'salvando' ? 'Salvando…' : 'Salvar rascunho'}
-            </button>
-          )}
         </div>
       </div>
+
+      {diag && !enviado && (
+        <div className="rascunho-barra" role="region" aria-label="Salvar rascunho">
+          <div className="rascunho-barra-texto">
+            <strong>Continue quando quiser</strong>
+            <span>Salve seu rascunho e retome depois em “Editar rascunho”.</span>
+            {estadoSalvamento === 'erro' && (
+              <span className="indicador-salvo-erro" role="alert">{erroSalvamento}</span>
+            )}
+            {estadoSalvamento === 'salvo' && salvoEm && (
+              <span className="rascunho-confirmacao" role="status">Salvo no servidor às {salvoEm}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            className="btn-primario rascunho-botao"
+            disabled={estadoSalvamento === 'salvando'}
+            onClick={salvarRascunho}
+          >
+            {estadoSalvamento === 'salvando' ? 'Salvando…' : 'Salvar rascunho'}
+          </button>
+        </div>
+      )}
 
       {enviadoOk && enviado && diag && (
         <div className="sucesso" style={{ marginBottom: 18 }}>
