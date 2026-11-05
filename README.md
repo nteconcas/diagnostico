@@ -170,11 +170,12 @@ dele. Garanta também que as credenciais R2 do `.env` estejam disponíveis.
 
 ## 8. Uso no dia a dia
 
-1. **Admin → Gerenciar escolas:** cadastra as unidades (nome + NTE).
-2. **Admin → Usuários:** cria contas para os responsáveis por cada escola/NTE.
+1. **Admin → Gerenciar escolas:** cadastra as unidades pelo nome.
+2. **Admin → Usuários:** cria contas para os responsáveis de cada escola.
 3. **Novo diagnóstico:** seleciona a escola → o rascunho é criado e **salvo automaticamente**
    a cada alteração (indicador no topo).
-4. O formulário segue a estrutura institucional: identificação (escola, responsável, foto do
+4. O formulário identifica automaticamente quem está preenchendo pela conta autenticada e segue
+   a estrutura institucional: identificação (escola, foto do
    gestor e **foto da fachada — capa do relatório**), endereço/contatos por setor, **GPS**
    (botão de captura + link do mapa no relatório), **1. Servidores** (com métricas de total e
    distribuição efetivos × ACT), **2. Infraestrutura** (salas, equipamentos, fotos antes/atual

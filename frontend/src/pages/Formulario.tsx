@@ -52,17 +52,26 @@ export function Formulario() {
     api<Diagnostico>(`/api/diagnosticos/${id}`)
       .then((d) => {
         setDiag(d)
-        setDados({ ...dadosVazios(), ...d.dados })
+        const dadosCarregados = { ...dadosVazios(), ...d.dados }
+        if (d.status === 'rascunho' && usuario?.nome) {
+          dadosCarregados.responsavel = usuario.nome
+        } else {
+          dadosCarregados.responsavel ||= usuario?.nome ?? ''
+        }
+        setDados(dadosCarregados)
         setCarregando(false)
       })
       .catch((e) => {
         setErroFatal((e as Error).message)
         setCarregando(false)
       })
-  }, [id, novo])
+  }, [id, novo, usuario?.nome])
 
   const enviado = diag?.status === 'enviado'
   const escolaAtualId = diag?.escola_id ?? escolaId
+  const nomePreenchedor = enviado
+    ? dados.responsavel || diag?.atualizado_por?.nome || usuario?.nome
+    : usuario?.nome
 
   function atualizar(fn: (d: Dados) => Dados) {
     if (enviado) return
@@ -182,35 +191,39 @@ export function Formulario() {
 
   return (
     <div className="formulario-pagina">
-      <div className="secao-titulo">
-        <div>
-          <h2>{diag ? diag.escola_nome : 'Formulário de Diagnóstico'}</h2>
-          <p className="desc">
-            {diag ? (
-              <>
-                <span className={'status-chip ' + (enviado ? 'enviado' : 'rascunho')}>
-                  {enviado ? '✓ Enviado' : 'Rascunho'}
-                </span>{' '}
-                · atualizado em {formatarData(diag.atualizado_em)}
-                {diag.atualizado_por && <> por {diag.atualizado_por.nome}</>}
-              </>
-            ) : (
-              'Escolha a unidade escolar que está sendo diagnosticada para começar.'
-            )}
+      <div className="formulario-cabecalho">
+        <div className="formulario-cabecalho-principal">
+          <span className="formulario-sobretitulo">Diagnóstico escolar</span>
+          <h2>{diag ? diag.escola_nome : 'Vamos começar?'}</h2>
+          <p>
+            {diag
+              ? `Atualizado em ${formatarData(diag.atualizado_em)}${diag.atualizado_por ? ` por ${diag.atualizado_por.nome}` : ''}`
+              : 'Selecione sua escola e preencha as informações da unidade.'}
           </p>
+          {nomePreenchedor && (
+            <div className="formulario-identidade">
+              <span className="formulario-identidade-icone" aria-hidden="true">✓</span>
+              <span>Preenchido por <strong>{nomePreenchedor}</strong></span>
+            </div>
+          )}
         </div>
-        <div className="indicador-salvo">
-          {enviado ? (
-            <span className="status-chip enviado">✓ Registrado na base da rede</span>
-          ) : diag ? (
-            salvando ? (
-              <>salvando…</>
-            ) : (
-              <>
-                <span className="ponto-verde" /> {salvoEm ? `rascunho salvo às ${salvoEm}` : 'salvamento automático ativo'}
-              </>
-            )
-          ) : null}
+        <div className="formulario-cabecalho-status">
+          {diag && (
+            <span className={'status-chip ' + (enviado ? 'enviado' : 'rascunho')}>
+              {enviado ? '✓ Enviado' : 'Em preenchimento'}
+            </span>
+          )}
+          <div className="indicador-salvo">
+            {diag && !enviado &&
+              (salvando ? (
+                <>Salvando…</>
+              ) : (
+                <>
+                  <span className="ponto-verde" />{' '}
+                  {salvoEm ? `Rascunho salvo às ${salvoEm}` : 'Salvamento automático ativo'}
+                </>
+              ))}
+          </div>
         </div>
       </div>
 
@@ -267,7 +280,7 @@ export function Formulario() {
 
       <fieldset disabled={enviado}>
         {/* ---------- Identificação ---------- */}
-        <Bloco id="identificacao" titulo="Identificação da unidade" descricao="Selecione a escola que está sendo diagnosticada.">
+        <Bloco id="identificacao" titulo="Identificação da unidade" descricao="Confira a escola e as imagens que identificam a unidade.">
           {novo ? (
             <Campo rotulo="Unidade escolar *" dica="Após escolher, o rascunho é criado e o preenchimento começa.">
               <select value={escolaId} onChange={(e) => escolherEscola(e.target.value)}>
@@ -284,14 +297,6 @@ export function Formulario() {
               <input value={diag!.escola_nome} readOnly />
             </Campo>
           )}
-
-          <CampoTexto
-            rotulo="Nome do(a) gestor(a) ou responsável"
-            opcional
-            valor={dados.responsavel}
-            onChange={(v) => set('responsavel', v)}
-            placeholder="Nome de quem responde pelo preenchimento"
-          />
 
           <div className="grade2">
             <div className="subcartao">

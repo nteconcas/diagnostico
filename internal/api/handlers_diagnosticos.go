@@ -125,9 +125,9 @@ func (s *Servidor) diagCriar(w http.ResponseWriter, r *http.Request) {
                 return
         }
         err = s.pool.QueryRow(r.Context(), `
-                INSERT INTO diagnosticos (escola_id, criado_por, atualizado_por)
-                VALUES ($1, $2, $2) RETURNING id::text`,
-                corpo.EscolaID, u.ID).Scan(&id)
+                INSERT INTO diagnosticos (escola_id, criado_por, atualizado_por, dados)
+                VALUES ($1, $2, $2, jsonb_build_object('responsavel', $3)) RETURNING id::text`,
+                corpo.EscolaID, u.ID, u.Nome).Scan(&id)
         if err != nil {
                 erroJSON(w, 500, "Erro ao criar diagnóstico")
                 return
@@ -187,12 +187,13 @@ func (s *Servidor) diagSalvarRascunho(w http.ResponseWriter, r *http.Request) {
                 return
         }
         corpo.Dados.Normalizar()
+        u := auth.UsuarioDoCtx(r)
+        corpo.Dados.Responsavel = u.Nome
         brutos, err := json.Marshal(corpo.Dados)
         if err != nil {
                 erroJSON(w, 500, "Erro ao processar dados")
                 return
         }
-        u := auth.UsuarioDoCtx(r)
         ct, err := s.pool.Exec(r.Context(), `
                 UPDATE diagnosticos
                 SET dados = $2, atualizado_por = $3, atualizado_em = now()

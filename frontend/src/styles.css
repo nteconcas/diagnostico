@@ -400,6 +400,129 @@ table.dados tr:hover td { background: #f8fbff; }
   margin-top: 12px;
 }
 
+.formulario-pagina { max-width: 1000px; margin: 0 auto; }
+.formulario-cabecalho {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin: 4px 0 20px;
+  padding: clamp(22px, 4vw, 38px);
+  border: 0;
+  border-radius: 22px;
+  color: #fff;
+  background:
+    radial-gradient(ellipse at 92% 8%, rgba(134, 239, 172, 0.24), transparent 34%),
+    linear-gradient(125deg, #102b59 0%, #1d4ed8 68%, #166534 135%);
+  box-shadow: 0 16px 38px rgba(30, 58, 138, 0.2);
+}
+.formulario-cabecalho::after {
+  content: '';
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  right: -78px;
+  bottom: -155px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  box-shadow: 0 0 0 22px rgba(255, 255, 255, 0.035), 0 0 0 46px rgba(255, 255, 255, 0.025);
+  pointer-events: none;
+}
+.formulario-cabecalho-principal, .formulario-cabecalho-status { position: relative; z-index: 1; }
+.formulario-cabecalho-principal { min-width: 0; }
+.formulario-sobretitulo {
+  display: inline-flex;
+  margin-bottom: 8px;
+  color: #bfdbfe;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+.formulario-cabecalho h2 {
+  color: #fff;
+  font-size: clamp(25px, 4vw, 34px);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.formulario-cabecalho-principal > p { margin-top: 8px; color: rgba(255, 255, 255, 0.78); font-size: 14px; }
+.formulario-identidade {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 20px;
+  padding: 8px 13px 8px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  font-size: 13px;
+}
+.formulario-identidade-icone {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #bbf7d0;
+  color: #166534;
+  font-weight: 800;
+}
+.formulario-cabecalho-status {
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+.formulario-cabecalho-status .indicador-salvo { color: rgba(255, 255, 255, 0.88); text-align: right; }
+.formulario-cabecalho-status .status-chip { background: #fff; }
+.formulario-pagina nav.secoes {
+  top: 82px;
+  margin: 0 0 18px;
+  padding: 10px;
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  border-radius: 16px;
+  background: rgba(248, 250, 252, 0.94);
+  box-shadow: 0 5px 16px rgba(15, 23, 42, 0.07);
+}
+.formulario-pagina nav.secoes a {
+  padding: 8px 14px;
+  color: #334155;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.formulario-pagina nav.secoes a:hover { background: var(--azul-claro); }
+.formulario-pagina section.bloco { scroll-margin-top: 148px; margin-bottom: 20px; }
+.formulario-pagina section.bloco > .cartao {
+  overflow: hidden;
+  border-color: #e6ebf2;
+  border-radius: 19px;
+  box-shadow: 0 5px 20px rgba(15, 23, 42, 0.045);
+}
+.formulario-pagina .bloco-cabeca {
+  align-items: center;
+  padding: 20px 24px 16px;
+  background: linear-gradient(180deg, #fff, #fbfdff);
+}
+.formulario-pagina .bloco-numero { box-shadow: 0 5px 12px rgba(29, 78, 216, 0.18); }
+.formulario-pagina .bloco-cabeca h3 { font-size: 18px; letter-spacing: -0.2px; }
+.formulario-pagina .bloco-cabeca p { max-width: 680px; line-height: 1.55; }
+.formulario-pagina .bloco-corpo { padding: 22px 24px 26px; gap: 19px; }
+.formulario-pagina .subcartao {
+  border-color: #e7edf5;
+  border-radius: 15px;
+  background: linear-gradient(145deg, #fff, #f8fbff);
+}
+.formulario-pagina .subcartao h4 { font-size: 14.5px; }
+.formulario-pagina input, .formulario-pagina textarea, .formulario-pagina select { border-color: #d7e0eb; }
+.formulario-pagina button:focus-visible, .formulario-pagina a:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.45);
+  outline-offset: 2px;
+}
+.formulario-pagina .aviso { border-radius: 14px; line-height: 1.6; }
+.formulario-pagina #revisao .btn-verde { min-height: 48px; padding: 12px 22px; }
+
 @media (max-width: 640px) {
   main.pagina { padding: 16px 12px calc(40px + env(safe-area-inset-bottom)); }
   header.app { position: static; }
@@ -409,15 +532,33 @@ table.dados tr:hover td { background: #f8fbff; }
   .usuario-chip { flex: 1; min-width: 0; }
   .usuario-chip > span:not(.papel-tag) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .formulario-pagina .secao-titulo { align-items: flex-start; }
-  .formulario-pagina .indicador-salvo { width: 100%; }
+  .formulario-cabecalho {
+    display: grid;
+    gap: 18px;
+    margin: 0 0 14px;
+    padding: 22px 18px;
+    border-radius: 19px;
+  }
+  .formulario-cabecalho h2 { font-size: 27px; }
+  .formulario-identidade { margin-top: 15px; }
+  .formulario-cabecalho-status {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .formulario-cabecalho-status .indicador-salvo { width: auto; font-size: 12px; }
   .formulario-pagina nav.secoes {
     position: sticky;
     top: 0;
     z-index: 30;
     margin: 0 -12px;
-    padding: 8px 12px;
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 0;
     background: rgba(241, 245, 249, 0.97);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.07);
     scroll-snap-type: x mandatory;
   }
   nav.secoes a {
@@ -426,8 +567,11 @@ table.dados tr:hover td { background: #f8fbff; }
     align-items: center;
     scroll-snap-align: start;
   }
-  .formulario-pagina section.bloco { scroll-margin-top: 60px; margin-bottom: 16px; }
-  .formulario-pagina .bloco-cabeca { padding: 16px 14px 10px; }
+  .formulario-pagina section.bloco { scroll-margin-top: 62px; margin-bottom: 14px; }
+  .formulario-pagina .bloco-cabeca { padding: 16px 14px 12px; gap: 11px; }
+  .formulario-pagina .bloco-numero { min-width: 34px; height: 34px; font-size: 15px; }
+  .formulario-pagina .bloco-cabeca h3 { font-size: 16px; }
+  .formulario-pagina .bloco-cabeca p { font-size: 12.5px; }
   .formulario-pagina .bloco-corpo { padding: 14px; gap: 14px; }
   .formulario-pagina .subcartao { padding: 12px; }
 
