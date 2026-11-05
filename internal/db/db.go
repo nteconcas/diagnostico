@@ -121,6 +121,12 @@ func Migrar(pool *pgxpool.Pool) error {
                 return err
         }
 
+        // escolas is a prerequisite for the remaining schema, so restore it even
+        // when migration metadata claims that its migration has already run.
+        if _, err := tx.Exec(ctx, schemaEscolas); err != nil {
+                return fmt.Errorf("garantir tabela escolas: %w", err)
+        }
+
         var aplicada int
         if err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(version), 0) FROM schema_migrations`).Scan(&aplicada); err != nil {
                 return err
