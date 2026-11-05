@@ -81,6 +81,7 @@ export function Formulario() {
   const [pendencias, setPendencias] = useState<string[]>([])
   const [enviadoOk, setEnviadoOk] = useState(false)
   const [novoEspaco, setNovoEspaco] = useState('')
+  const [novoEspacoRevitalizacao, setNovoEspacoRevitalizacao] = useState('')
   const [novoCurso, setNovoCurso] = useState('')
   const [novoLab, setNovoLab] = useState('')
   const timer = useRef<number | undefined>(undefined)
@@ -460,6 +461,13 @@ export function Formulario() {
     dados.equipamentos.telas
   const ocupacao = dados.salas.total > 0 ? (dados.salas.ocupadas / dados.salas.total) * 100 : -1
 
+  // Obras e espaços que precisam de revitalização (listas opcionais do formulário).
+  const obras = dados.obras ?? []
+  const revitalizacao = dados.revitalizacao ?? []
+  // Obras com fotos de apenas um dos lados (antes ou depois) ficam em destaque
+  // na revisão, para o comparativo do mesmo ângulo não ficar incompleto.
+  const obrasSemPar = obras.filter((o) => (o.fotos_antes?.length ?? 0) === 0 || (o.fotos_depois?.length ?? 0) === 0)
+
   const checagens = useMemo(
     () => [
       { ok: !!dados.foto_fachada, texto: 'Foto da fachada da escola (capa do relatório)' },
@@ -606,8 +614,10 @@ export function Formulario() {
             ['servidores', '1. Servidores'],
             ['infraestrutura', '2. Infraestrutura'],
             ['espacos', '3. Espaços'],
-            ['projetos', '4. Projetos'],
-            ['cursos', '5. Cursos'],
+            ['obras', '4. Obras'],
+            ['revitalizacao', '5. Revitalização'],
+            ['projetos', '6. Projetos'],
+            ['cursos', '7. Cursos'],
             ['revisao', 'Revisão e envio'],
           ].map(([ancora, titulo]) => (
             <a key={ancora} href={`#${ancora}`}>
@@ -1215,10 +1225,267 @@ export function Formulario() {
           )}
         </Bloco>
 
-        {/* ---------- 4. Projetos ---------- */}
+        {/* ---------- 4. Obras realizadas ---------- */}
+        <Bloco
+          id="obras"
+          numero="4"
+          verde
+          titulo="Obras realizadas na unidade escolar"
+          descricao="Descreva cada obra concluída e envie um par de fotos: antes e depois."
+        >
+          <div className="aviso" style={{ marginBottom: 14 }}>
+            <strong>Orientação para as fotos:</strong> escolha um ponto fixo (portão, esquina, canto da sala) e
+            fotografe <b>antes</b> e <b>depois</b> da obra <b>do mesmo ângulo, da mesma distância e na mesma
+            direção</b>. Mantenha a mesma altura da câmera e evite zoom ou troca de lado. Assim o antes e o depois
+            ficam alinhados e mostram claramente a transformação do espaço.
+          </div>
+
+          {obras.length === 0 && (
+            <div className="vazio">
+              Nenhuma obra registrada ainda. Adicione as obras realizadas na unidade, inclusive as mais simples
+              (pintura, troca de piso, cobertura, mobiliário).
+            </div>
+          )}
+
+          {obras.map((obra, i) => (
+            <div className="subcartao" key={i} style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <h4 style={{ margin: 0 }}>
+                  Obra {i + 1}{' '}
+                  <span className="status-chip nenhum" style={{ marginLeft: 8 }}>
+                    {obras.length} cadastrada(s)
+                  </span>
+                </h4>
+                {!enviado && (
+                  <button
+                    type="button"
+                    className="btn-perigo btn-mini"
+                    onClick={() => set('obras', obras.filter((_, j) => j !== i))}
+                  >
+                    Remover
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'grid', gap: 12 }}>
+                <CampoTexto
+                  rotulo="Obra realizada"
+                  valor={obra.nome}
+                  onChange={(v) => {
+                    const lista = [...obras]
+                    lista[i] = { ...lista[i], nome: v }
+                    set('obras', lista)
+                  }}
+                  placeholder="Ex.: Reforma do telhado, pintura da quadra, troca do piso da sala 3…"
+                />
+                <Campo rotulo="Descrição da obra" dica="O que foi feito, quando e qual problema resolveu.">
+                  <textarea
+                    maxLength={2500}
+                    value={obra.descricao}
+                    onChange={(e) => {
+                      const lista = [...obras]
+                      lista[i] = { ...lista[i], descricao: e.target.value }
+                      set('obras', lista)
+                    }}
+                    placeholder="Descreva a intervenção realizada, o período de execução e o resultado para a escola…"
+                  />
+                  <div style={{ fontSize: 11.5, color: 'var(--cinza-fraco)', textAlign: 'right', marginTop: 3 }}>
+                    {obra.descricao.length}/2500
+                  </div>
+                </Campo>
+                <div className="grade2">
+                  <div>
+                    <label className="rotulo">Fotos — antes da obra</label>
+                    <p className="dica">Mesmo ângulo, distância e enquadramento usados no depois.</p>
+                    <FotoUpload
+                      fotos={obra.fotos_antes ?? []}
+                      escolaId={escolaAtualId}
+                      max={4}
+                      textoBotao="Foto de antes"
+                      onChange={(fs) => {
+                        const lista = [...obras]
+                        lista[i] = { ...lista[i], fotos_antes: fs }
+                        set('obras', lista)
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="rotulo">Fotos — depois da obra</label>
+                    <p className="dica">Repita o enquadramento das fotos de antes.</p>
+                    <FotoUpload
+                      fotos={obra.fotos_depois ?? []}
+                      escolaId={escolaAtualId}
+                      max={4}
+                      textoBotao="Foto de depois"
+                      onChange={(fs) => {
+                        const lista = [...obras]
+                        lista[i] = { ...lista[i], fotos_depois: fs }
+                        set('obras', lista)
+                      }}
+                    />
+                  </div>
+                </div>
+                {((obra.fotos_antes?.length ?? 0) === 0 || (obra.fotos_depois?.length ?? 0) === 0) && (
+                  <div className="aviso">
+                    Para o comparativo ficar completo, envie pelo menos uma foto de <b>antes</b> e uma de{' '}
+                    <b>depois</b> desta obra, tiradas do mesmo ângulo.
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {!enviado && (
+            <button
+              type="button"
+              className="btn-primario"
+              onClick={() =>
+                set('obras', [
+                  ...obras,
+                  { nome: '', descricao: '', fotos_antes: [], fotos_depois: [] },
+                ])
+              }
+            >
+              ＋ Adicionar obra
+            </button>
+          )}
+        </Bloco>
+
+        {/* ---------- 5. Espaços que precisam de revitalização ---------- */}
+        <Bloco
+          id="revitalizacao"
+          numero="5"
+          verde
+          titulo="Espaços que precisam de revitalização"
+          descricao="Aponte os espaços que necessitam de intervenção, com descrição e fotos da situação atual."
+        >
+          <div className="aviso" style={{ marginBottom: 14 }}>
+            <strong>Como registrar:</strong> fotografe o espaço exatamente como ele está hoje, de frente e de perto
+            do problema (infiltração, piso quebrado, mobiliário danificado, iluminação precária…). Essas imagens
+            orientam o planejamento das próximas obras.
+          </div>
+
+          {!enviado && (
+            <div>
+              <p className="dica" style={{ marginBottom: 8 }}>
+                Sugestões rápidas — toque para adicionar. <strong>{revitalizacao.length} adicionado(s)</strong>
+              </p>
+              <div className="chips" style={{ marginBottom: 10 }}>
+                {SUGESTOES_ESPACOS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className="chip-sugestao"
+                    disabled={revitalizacao.some((r) => (r.nome ?? '').toLowerCase() === s.toLowerCase())}
+                    onClick={() =>
+                      set('revitalizacao', [
+                        ...revitalizacao,
+                        { nome: s, descricao: '', fotos: [] },
+                      ])
+                    }
+                  >
+                    ＋ {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {revitalizacao.length === 0 ? (
+            <div className="vazio">
+              Nenhum espaço apontado ainda. Use as sugestões acima ou inclua um espaço com outro nome.
+            </div>
+          ) : (
+            revitalizacao.map((espaco, i) => (
+              <div className="subcartao espaco-editor" key={i} style={{ marginBottom: 14 }}>
+                <div className="espaco-editor-cabeca">
+                  <h4>Espaço {i + 1}</h4>
+                  {!enviado && (
+                    <button
+                      type="button"
+                      className="btn-perigo btn-mini"
+                      onClick={() => set('revitalizacao', revitalizacao.filter((_, j) => j !== i))}
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
+                <CampoTexto
+                  rotulo="Nome do espaço"
+                  valor={espaco.nome}
+                  onChange={(v) => {
+                    const lista = [...revitalizacao]
+                    lista[i] = { ...lista[i], nome: v }
+                    set('revitalizacao', lista)
+                  }}
+                  placeholder="Ex.: Quadra descoberta, banheiro do bloco B, pátio…"
+                />
+                <Campo rotulo="Descrição da necessidade" dica="O que precisa ser feito e por quê.">
+                  <textarea
+                    maxLength={2500}
+                    value={espaco.descricao}
+                    onChange={(e) => {
+                      const lista = [...revitalizacao]
+                      lista[i] = { ...lista[i], descricao: e.target.value }
+                      set('revitalizacao', lista)
+                    }}
+                    placeholder="Descreva o problema atual e a intervenção necessária…"
+                  />
+                  <div style={{ fontSize: 11.5, color: 'var(--cinza-fraco)', textAlign: 'right', marginTop: 3 }}>
+                    {espaco.descricao.length}/2500
+                  </div>
+                </Campo>
+                <div>
+                  <label className="rotulo">Fotos do espaço</label>
+                  <p className="dica">Mostre a situação atual do espaço por mais de um ângulo.</p>
+                  <FotoUpload
+                    fotos={espaco.fotos ?? []}
+                    escolaId={escolaAtualId}
+                    max={4}
+                    textoBotao="Adicionar fotos"
+                    onChange={(fs) => {
+                      const lista = [...revitalizacao]
+                      lista[i] = { ...lista[i], fotos: fs }
+                      set('revitalizacao', lista)
+                    }}
+                  />
+                </div>
+              </div>
+            ))
+          )}
+
+          {!enviado && (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 240 }}>
+                <CampoTexto
+                  rotulo="Adicionar outro espaço"
+                  dica="A escola tem outro espaço que precisa de revitalização? Adicione quantos forem necessários."
+                  valor={novoEspacoRevitalizacao}
+                  onChange={setNovoEspacoRevitalizacao}
+                  placeholder="Ex.: Telhado do bloco A, horta, sala de leitura…"
+                />
+              </div>
+              <button
+                type="button"
+                className="btn-suave"
+                disabled={!novoEspacoRevitalizacao.trim()}
+                onClick={() => {
+                  set('revitalizacao', [
+                    ...revitalizacao,
+                    { nome: novoEspacoRevitalizacao.trim(), descricao: '', fotos: [] },
+                  ])
+                  setNovoEspacoRevitalizacao('')
+                }}
+              >
+                ＋ Adicionar
+              </button>
+            </div>
+          )}
+        </Bloco>
+
+        {/* ---------- 6. Projetos ---------- */}
         <Bloco
           id="projetos"
-          numero="4"
+          numero="6"
           verde
           titulo="Projetos"
           descricao="Projetos da escola, com descrição e fotos — adicione quantos existirem."
@@ -1301,10 +1568,10 @@ export function Formulario() {
           )}
         </Bloco>
 
-        {/* ---------- 5. Cursos ---------- */}
+        {/* ---------- 7. Cursos ---------- */}
         <Bloco
           id="cursos"
-          numero="5"
+          numero="7"
           verde
           titulo="Ofertas de cursos"
           descricao="Cursos disponibilizados pela escola à comunidade."
@@ -1374,6 +1641,22 @@ export function Formulario() {
                 </div>
                 <span>{totalServ > 0 ? `Quadro de servidores informado (${totalServ} no total)` : 'Quadro de servidores não informado (opcional)'}</span>
               </div>
+              {(obras.length > 0 || revitalizacao.length > 0) && (
+                <div className="revisao-item">
+                  <div
+                    className="marca ok"
+                    style={obrasSemPar.length > 0 ? { background: 'var(--aviso-fundo)', color: '#854d0e' } : {}}
+                  >
+                    {obrasSemPar.length > 0 ? '!' : '✓'}
+                  </div>
+                  <span>
+                    {obras.length} obra(s) realizada(s) · {revitalizacao.length} espaço(s) que precisam de revitalização
+                    {obrasSemPar.length > 0
+                      ? ` — ${obrasSemPar.length} obra(s) ainda sem o par de fotos antes/depois tiradas do mesmo ângulo`
+                      : ''}
+                  </span>
+                </div>
+              )}
             </div>
 
             {enviado ? (

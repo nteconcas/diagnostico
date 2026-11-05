@@ -4,6 +4,7 @@ package db
 import (
         "context"
         "fmt"
+        "log"
         "time"
 
         "github.com/jackc/pgx/v5/pgxpool"
@@ -28,16 +29,18 @@ func Conectar(dsn string) (*pgxpool.Pool, error) {
         return pool, nil
 }
 
-const schemaEscolas = `
+// schemaBase reúne todo o DDL do aplicativo em formato idempotente
+// (CREATE ... IF NOT EXISTS / ALTER ... ADD COLUMN IF NOT EXISTS). Ele é
+// reaplicado em toda inicialização do binário, de modo que cada deploy ajuste o
+// banco que já está em produção: tabelas, colunas e índices ausentes são
+// recriados sem apagar nenhum dado existente.
+const schemaBase = `
 CREATE TABLE IF NOT EXISTS escolas (
-                id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                nome      TEXT NOT NULL,
-                nte       TEXT NOT NULL DEFAULT '',
-                criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+        id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        nome      TEXT NOT NULL,
+        nte       TEXT NOT NULL DEFAULT '',
+        criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-`
-
-const schema = `
 CREATE TABLE IF NOT EXISTS usuarios (
         id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         username    TEXT NOT NULL UNIQUE,
@@ -77,27 +80,40 @@ CREATE TABLE IF NOT EXISTS diagnosticos (
         enviado_em     TIMESTAMPTZ
 );
 
+-- Bases antigas: garante que toda coluna esperada pelo binário exista.
+ALTER TABLE escolas ADD COLUMN IF NOT EXISTS nte TEXT NOT NULL DEFAULT '';
+ALTER TABLE escolas ADD COLUMN IF NOT EXISTS criado_em TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS escola_id UUID REFERENCES escolas(id) ON DELETE SET NULL;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS criado_em TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE diagnosticos ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'rascunho';
+ALTER TABLE diagnosticos ADD COLUMN IF NOT EXISTS dados JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE diagnosticos ADD COLUMN IF NOT EXISTS criado_por UUID REFERENCES usuarios(id) ON DELETE SET NULL;
+ALTER TABLE diagnosticos ADD COLUMN IF NOT EXISTS atualizado_por UUID REFERENCES usuarios(id) ON DELETE SET NULL;
+ALTER TABLE diagnosticos ADD COLUMN IF NOT EXISTS criado_em TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE diagnosticos ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE diagnosticos ADD COLUMN IF NOT EXISTS enviado_em TIMESTAMPTZ;
+ALTER TABLE fotos ADD COLUMN IF NOT EXISTS enviado_por UUID REFERENCES usuarios(id) ON DELETE SET NULL;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_diag_rascunho_unico
         ON diagnosticos (escola_id) WHERE status = 'rascunho';
 
 CREATE INDEX IF NOT EXISTS idx_diag_escola ON diagnosticos (escola_id);
 CREATE INDEX IF NOT EXISTS idx_sessoes_expira ON sessoes (expira_em);
-
--- Migração para bases antigas: vínculo do usuário responsável com a escola.
-ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS escola_id UUID REFERENCES escolas(id) ON DELETE SET NULL;
 `
 
-type migration struct {
+// versaoSchema identifica o schema publicado neste binário. O valor é gravado em
+// schema_migrations a cada deploy para auditoria das bases em produção.
+const versaoSchema = 4
+
+type migracao struct {
         version int
-        schema  string
+        sql     string
 }
 
-var migrations = []migration{
-        {version: 1, schema: schemaEscolas},
-        // Repara bancos que registraram a versão 1 quando ela ainda continha todo o schema.
-        {version: 2, schema: schemaEscolas},
-        {version: 3, schema: schema},
-}
+// migracoes guarda passos que vão além de DDL idempotente (por exemplo,
+// transformar dados existentes), aplicados em ordem de versão. O schema em si
+// vive em schemaBase e é reaplicado em todo boot.
+var migracoes = []migracao{}
 
 // Migrar aplica, em ordem, as versões de schema ainda não registradas.
 func Migrar(pool *pgxpool.Pool) error {
@@ -121,26 +137,40 @@ func Migrar(pool *pgxpool.Pool) error {
                 return err
         }
 
-        // escolas is a prerequisite for the remaining schema, so restore it even
-        // when migration metadata claims that its migration has already run.
-        if _, err := tx.Exec(ctx, schemaEscolas); err != nil {
-                return fmt.Errorf("garantir tabela escolas: %w", err)
+        // O schema completo (idempotente) é reaplicado em toda inicialização:
+        // assim o banco do ambiente de deploy sempre fica alinhado ao binário
+        // publicado, mesmo que uma versão anterior tenha falhado no meio.
+        if _, err := tx.Exec(ctx, schemaBase); err != nil {
+                return fmt.Errorf("garantir schema base: %w", err)
         }
 
         var aplicada int
         if err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(version), 0) FROM schema_migrations`).Scan(&aplicada); err != nil {
                 return err
         }
-        for _, m := range migrations {
+        for _, m := range migracoes {
                 if m.version <= aplicada {
                         continue
                 }
-                if _, err := tx.Exec(ctx, m.schema); err != nil {
-                        return fmt.Errorf("migração de schema %d: %w", m.version, err)
+                if _, err := tx.Exec(ctx, m.sql); err != nil {
+                        return fmt.Errorf("migração %d: %w", m.version, err)
                 }
                 if _, err := tx.Exec(ctx, `INSERT INTO schema_migrations (version) VALUES ($1)`, m.version); err != nil {
                         return err
                 }
+                aplicada = m.version
         }
-        return tx.Commit(ctx)
+        if aplicada < versaoSchema {
+                if _, err := tx.Exec(ctx, `
+                        INSERT INTO schema_migrations (version) VALUES ($1)
+                        ON CONFLICT (version) DO NOTHING`, versaoSchema); err != nil {
+                        return err
+                }
+                aplicada = versaoSchema
+        }
+        if err := tx.Commit(ctx); err != nil {
+                return err
+        }
+        log.Printf("Banco de dados ajustado (schema na versão %d).", aplicada)
+        return nil
 }

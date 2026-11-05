@@ -280,11 +280,92 @@ export function Envio() {
         </section>
       )}
 
-      {d.projetos.length > 0 && (
+      {(d.obras ?? []).length > 0 && (
         <section className="bloco">
           <div className="cartao">
             <div className="bloco-cabeca">
               <div className="bloco-numero">4</div>
+              <div>
+                <h3>Obras realizadas</h3>
+              </div>
+            </div>
+            <div className="bloco-corpo">
+              {(d.obras ?? []).map((o, i) => (
+                <div className="subcartao" key={i}>
+                  <h4>{o.nome || `Obra ${i + 1}`}</h4>
+                  {o.descricao && <p style={{ whiteSpace: 'pre-wrap', fontSize: 13.5 }}>{o.descricao}</p>}
+                  <div className="grade2" style={{ marginTop: 8 }}>
+                    <div>
+                      <b
+                        className="rot"
+                        style={{ fontSize: 11.5, textTransform: 'uppercase', color: 'var(--cinza)', letterSpacing: 0.4 }}
+                      >
+                        Antes da obra
+                      </b>
+                      <div className="galeria-mini" style={{ marginTop: 6 }}>
+                        {(o.fotos_antes ?? []).length > 0 ? (
+                          (o.fotos_antes ?? []).map((f) => <img key={f.id} src={fotoThumb(f)} alt={f.nome} />)
+                        ) : (
+                          <span className="dica">Nenhuma foto de antes enviada.</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <b
+                        className="rot"
+                        style={{ fontSize: 11.5, textTransform: 'uppercase', color: 'var(--cinza)', letterSpacing: 0.4 }}
+                      >
+                        Depois da obra
+                      </b>
+                      <div className="galeria-mini" style={{ marginTop: 6 }}>
+                        {(o.fotos_depois ?? []).length > 0 ? (
+                          (o.fotos_depois ?? []).map((f) => <img key={f.id} src={fotoThumb(f)} alt={f.nome} />)
+                        ) : (
+                          <span className="dica">Nenhuma foto de depois enviada.</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {(d.revitalizacao ?? []).length > 0 && (
+        <section className="bloco">
+          <div className="cartao">
+            <div className="bloco-cabeca">
+              <div className="bloco-numero">5</div>
+              <div>
+                <h3>Espaços que precisam de revitalização</h3>
+              </div>
+            </div>
+            <div className="bloco-corpo">
+              {(d.revitalizacao ?? []).map((r, i) => (
+                <div className="subcartao" key={i}>
+                  <h4>{r.nome || `Espaço ${i + 1}`}</h4>
+                  {r.descricao && <p className="espaco-descricao">{r.descricao}</p>}
+                  {(r.fotos ?? []).length > 0 && (
+                    <div className="galeria-mini" style={{ marginTop: 6 }}>
+                      {(r.fotos ?? []).map((f) => (
+                        <img key={f.id} src={fotoThumb(f)} alt={f.nome} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {d.projetos.length > 0 && (
+        <section className="bloco">
+          <div className="cartao">
+            <div className="bloco-cabeca">
+              <div className="bloco-numero">6</div>
               <div>
                 <h3>Projetos</h3>
               </div>
@@ -312,7 +393,7 @@ export function Envio() {
         <section className="bloco">
           <div className="cartao">
             <div className="bloco-cabeca">
-              <div className="bloco-numero">5</div>
+              <div className="bloco-numero">7</div>
               <div>
                 <h3>Ofertas de cursos</h3>
               </div>

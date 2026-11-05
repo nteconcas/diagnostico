@@ -135,23 +135,43 @@ type Projeto struct {
         Fotos     []Foto `json:"fotos"`
 }
 
+// Obra é uma obra já realizada na unidade escolar. O registro fotográfico é
+// feito em pares: as fotos de "antes" e de "depois" devem ser tiradas do mesmo
+// ângulo e da mesma distância, para evidenciar a transformação do espaço.
+type Obra struct {
+        Nome        string `json:"nome"`
+        Descricao   string `json:"descricao"`
+        FotosAntes  []Foto `json:"fotos_antes"`
+        FotosDepois []Foto `json:"fotos_depois"`
+}
+
+// EspacoRevitalizacao é um espaço da escola que ainda precisa de
+// revitalização, registrado com descrição e fotos da situação atual.
+type EspacoRevitalizacao struct {
+        Nome      string `json:"nome"`
+        Descricao string `json:"descricao"`
+        Fotos     []Foto `json:"fotos"`
+}
+
 // Dados é o conteúdo completo do formulário de diagnóstico.
 type Dados struct {
-        Responsavel string       `json:"responsavel"`
-        FotoGestor  *Foto        `json:"foto_gestor,omitempty"`
-        FotoFachada *Foto        `json:"foto_fachada,omitempty"`
-        Endereco    string       `json:"endereco"`
-        Contatos    Contatos     `json:"contatos"`
-        GPS         GPS          `json:"gps"`
-        Servidores  Servidores   `json:"servidores"`
-        Salas       Salas        `json:"salas"`
-        Equipamentos Equipamentos `json:"equipamentos"`
-        FotosAntes  []Foto       `json:"fotos_antes"`
-        FotosAtual  []Foto       `json:"fotos_atual"`
-        Labs        Labs         `json:"labs"`
-        Espacos     []Espaco     `json:"espacos"`
-        Projetos    []Projeto    `json:"projetos"`
-        Cursos      []string     `json:"cursos"`
+        Responsavel   string                `json:"responsavel"`
+        FotoGestor    *Foto                 `json:"foto_gestor,omitempty"`
+        FotoFachada   *Foto                 `json:"foto_fachada,omitempty"`
+        Endereco      string                `json:"endereco"`
+        Contatos      Contatos              `json:"contatos"`
+        GPS           GPS                   `json:"gps"`
+        Servidores    Servidores            `json:"servidores"`
+        Salas         Salas                 `json:"salas"`
+        Equipamentos  Equipamentos          `json:"equipamentos"`
+        FotosAntes    []Foto                `json:"fotos_antes"`
+        FotosAtual    []Foto                `json:"fotos_atual"`
+        Labs          Labs                  `json:"labs"`
+        Espacos       []Espaco              `json:"espacos"`
+        Obras         []Obra                `json:"obras"`
+        Revitalizacao []EspacoRevitalizacao `json:"revitalizacao"`
+        Projetos      []Projeto             `json:"projetos"`
+        Cursos        []string              `json:"cursos"`
 }
 
 func nonNeg(n int) int {
@@ -238,6 +258,44 @@ func (d *Dados) Normalizar() {
                 espacos = append(espacos, e)
         }
         d.Espacos = espacos
+        // Obras realizadas: descrição + pares de fotos antes/depois.
+        obras := []Obra{}
+        for _, o := range d.Obras {
+                o.Nome = strings.TrimSpace(o.Nome)
+                o.Descricao = strings.TrimSpace(o.Descricao)
+                if len(o.Descricao) > 2500 {
+                        o.Descricao = o.Descricao[:2500]
+                }
+                o.FotosAntes = limiteFotos(o.FotosAntes, 4)
+                o.FotosDepois = limiteFotos(o.FotosDepois, 4)
+                if o.Nome == "" && o.Descricao == "" && len(o.FotosAntes) == 0 && len(o.FotosDepois) == 0 {
+                        continue
+                }
+                obras = append(obras, o)
+        }
+        d.Obras = obras
+        // Espaços que precisam de revitalização: nome, descrição e fotos.
+        revitalizacao := []EspacoRevitalizacao{}
+        vistosRevitalizacao := map[string]bool{}
+        for _, r := range d.Revitalizacao {
+                r.Nome = strings.TrimSpace(r.Nome)
+                r.Descricao = strings.TrimSpace(r.Descricao)
+                if len(r.Descricao) > 2500 {
+                        r.Descricao = r.Descricao[:2500]
+                }
+                r.Fotos = limiteFotos(r.Fotos, 4)
+                if r.Nome == "" && r.Descricao == "" && len(r.Fotos) == 0 {
+                        continue
+                }
+                if chave := strings.ToLower(r.Nome); chave != "" {
+                        if vistosRevitalizacao[chave] {
+                                continue
+                        }
+                        vistosRevitalizacao[chave] = true
+                }
+                revitalizacao = append(revitalizacao, r)
+        }
+        d.Revitalizacao = revitalizacao
         projetos := []Projeto{}
         for _, p := range d.Projetos {
                 p.Nome = strings.TrimSpace(p.Nome)

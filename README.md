@@ -2,7 +2,8 @@
 
 Aplicação web em **Go** (API + frontend React embutidos em um único binário) para coleta do
 **Diagnóstico Escolar** da rede: identificação da unidade, contatos e GPS, servidores,
-infraestrutura (com registro fotográfico), espaços, projetos e ofertas de cursos — com
+infraestrutura (com registro fotográfico), espaços, **obras realizadas (antes e depois do
+mesmo ângulo)**, **espaços que precisam de revitalização**, projetos e ofertas de cursos — com
 **relatórios exportáveis em PDF, DOCX e HTML**.
 
 - **Backend:** Go 1.23+ · API REST (net/http) · PostgreSQL (pgx) · sessões em banco · bcrypt
@@ -101,9 +102,26 @@ docker compose --env-file .env -f deploy/docker-compose.yml up -d
 As tabelas são criadas automaticamente na primeira execução do app
 (`usuarios`, `sessoes`, `escolas`, `fotos`, `diagnosticos`).
 
-Ao iniciar, o app aplica automaticamente as migrações pendentes e registra suas versões em
-`schema_migrations`. Alterações futuras no banco devem ser adicionadas como uma nova versão
-em `internal/db/db.go`; não basta alterar uma migração que já foi aplicada.
+### Ajuste automático do banco no deploy
+
+O app mantém o schema em `internal/db/schemaBase`: todo o DDL é idempotente
+(`CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`,
+`CREATE INDEX IF NOT EXISTS`) e é **reaplicado em cada inicialização**. Na prática, cada
+deploy já ajusta o banco existente sozinho — colunas, tabelas e índices que faltarem são
+criados sem apagar dados —, sem passo manual de migração no servidor.
+
+- `db.Migrar` roda antes de o servidor começar a atender, dentro de uma transação com
+  `pg_advisory_xact_lock` (dois containers subindo juntos não se atropelam);
+- a versão aplicada é registrada em `schema_migrations` e aparece no log:
+  `Banco de dados ajustado (schema na versão N).`;
+- se o PostgreSQL ainda não estiver aceitando conexões (caso comum no deploy), o app
+  repete conexão + ajuste por até 1 minuto antes de encerrar com erro;
+- passos que não sejam DDL idempotente (ex.: transformar dados já gravados) devem ser
+  adicionados em `migracoes`, em `internal/db/db.go`, com uma versão nova — nunca
+  alterando uma migração que já foi aplicada.
+
+O conteúdo do formulário (descrição, fotos, obras, espaços, projetos…) fica no campo JSONB
+`diagnosticos.dados`: novos campos de formulário passam a ser aceitos sem alterar tabelas.
 
 ## 5. Execução
 
@@ -179,8 +197,10 @@ dele. Garanta também que as credenciais R2 do `.env` estejam disponíveis.
    gestor e **foto da fachada — capa do relatório**), endereço/contatos por setor, **GPS**
    (botão de captura + link do mapa no relatório), **1. Servidores** (com métricas de total e
    distribuição efetivos × ACT), **2. Infraestrutura** (salas, equipamentos, fotos antes/atual
-   da gestão 2023/2027 — mínimo 3 de cada — e laboratórios), **3. Espaços**, **4. Projetos**
-   (até 2500 caracteres e 3 fotos por projeto) e **5. Ofertas de cursos**.
+   da gestão 2023/2027 — mínimo 3 de cada — e laboratórios), **3. Espaços**, **4. Obras
+   realizadas** (descrição + fotos de antes e depois **do mesmo ângulo**), **5. Espaços que
+   precisam de revitalização** (descrição + fotos da situação atual), **6. Projetos**
+   (até 2500 caracteres e 3 fotos por projeto) e **7. Ofertas de cursos**.
 5. **Enviar formulário:** só habilita quando os campos obrigatórios estão completos (a lista
    de pendências é mostrada). Depois de enviado, o registro fica somente leitura e o botão de
    exportação oferece **PDF, DOCX e HTML**.
@@ -190,6 +210,11 @@ dele. Garanta também que as credenciais R2 do `.env` estejam disponíveis.
 ## 9. Notas técnicas
 
 - Fotos aceitas: JPG, PNG, WEBP e GIF (até 20 MB); convertidas para JPEG no servidor.
+- **Obras realizadas:** até 4 fotos de antes e 4 de depois por obra, no mesmo ângulo. A
+  orientação de enquadramento aparece no próprio bloco; obras com apenas um dos lados
+  fotografado são sinalizadas na revisão (aviso que não impede o envio).
+- **Espaços que precisam de revitalização:** nome, descrição (até 2500 caracteres) e até 4
+  fotos por espaço; nomes repetidos são ignorados.
 - O rascunho é único por escola (índice parcial no PostgreSQL) — abrir o diagnóstico de uma
   escola com rascunho existente continua o mesmo preenchimento.
 - Diagnósticos enviados preservam histórico; admins podem descartá-los pela API.

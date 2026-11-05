@@ -42,6 +42,12 @@ const tplHTML = `<!DOCTYPE html>
   .lab, .espaco, .projeto { border: 1px solid var(--linha); border-radius: 12px; padding: 14px 18px; margin: 10px 0 14px; break-inside: avoid; }
   .lab h4, .espaco h4, .projeto h4 { color: var(--verde); font-size: 15.5px; margin-bottom: 4px; }
   .lab p, .projeto p, .espaco p { font-size: 14px; color: var(--tinta); white-space: pre-wrap; }
+  .obra { border: 1px solid var(--linha); border-radius: 12px; padding: 14px 18px; margin: 10px 0 14px; break-inside: avoid; }
+  .obra h4 { color: var(--verde); font-size: 15.5px; margin-bottom: 4px; }
+  .obra p { font-size: 14px; color: var(--tinta); white-space: pre-wrap; }
+  .obra .par { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+  .obra .par > div { flex: 1 1 260px; min-width: 220px; }
+  .obra .rotulo-fotos { font-size: 11.5px; color: var(--cinza); text-transform: uppercase; letter-spacing: .4px; margin: 4px 0 2px; }
   .chips { display:flex; flex-wrap:wrap; gap:8px; }
   .chip { background:#ecfdf5; color:#166534; border:1px solid #bbf7d0; padding: 5px 14px; border-radius: 999px; font-size: 13.5px; }
   a { color: var(--azul); }
@@ -119,16 +125,37 @@ const tplHTML = `<!DOCTYPE html>
     {{galeria .FotosAtual}}
   </div>
 
+  {{if .Obras}}
+  <div class="secao">
+    <h3><small>Seção 3</small>Obras realizadas</h3>
+    <p class="legenda">Cada obra é registrada com fotos de antes e depois tiradas do mesmo ângulo e da mesma distância.</p>
+    {{range .Obras}}
+    <div class="obra"><h4>{{.Nome}}</h4>{{if .Descricao}}<p>{{.Descricao}}</p>{{end}}
+      <div class="par">
+        <div><div class="rotulo-fotos">Antes da obra</div>{{galeria .Antes}}</div>
+        <div><div class="rotulo-fotos">Depois da obra</div>{{galeria .Depois}}</div>
+      </div>
+    </div>{{end}}
+  </div>
+  {{end}}
+
+  {{if .Revitalizacao}}
+  <div class="secao">
+    <h3><small>Seção 4</small>Espaços que precisam de revitalização</h3>
+    {{range .Revitalizacao}}<div class="espaco"><h4>{{.Nome}}</h4>{{if .Descricao}}<p>{{.Descricao}}</p>{{end}}{{galeria .Fotos}}</div>{{end}}
+  </div>
+  {{end}}
+
   {{if .Espacos}}
   <div class="secao">
-    <h3><small>Seção 3</small>Espaços da escola</h3>
+    <h3><small>Seção 5</small>Espaços da escola</h3>
     {{range .Espacos}}<div class="espaco"><h4>{{.Nome}}</h4>{{if .Descricao}}<p>{{.Descricao}}</p>{{end}}{{galeria .Fotos}}</div>{{end}}
   </div>
   {{end}}
 
   {{if .Projetos}}
   <div class="secao">
-    <h3><small>Seção 4</small>Projetos</h3>
+    <h3><small>Seção 6</small>Projetos</h3>
     {{range .Projetos}}
     <div class="projeto"><h4>{{.Nome}}</h4><p>{{.Descricao}}</p>{{galeria .Fotos}}</div>{{end}}
   </div>
@@ -136,7 +163,7 @@ const tplHTML = `<!DOCTYPE html>
 
   {{if .Cursos}}
   <div class="secao">
-    <h3><small>Seção 5</small>Ofertas de cursos</h3>
+    <h3><small>Seção 7</small>Ofertas de cursos</h3>
     <div class="chips">{{range .Cursos}}<span class="chip">{{.}}</span>{{end}}</div>
   </div>
   {{end}}

@@ -189,7 +189,7 @@ func (d *docxBuilder) montar(re Reporte) {
 	// capa
 	d.pEspaco()
 	d.pTitulo("FORMULÁRIO DE DIAGNÓSTICO ESCOLAR")
-	d.pSub("Servidores · Infraestrutura · Espaços · Projetos · Ofertas de cursos")
+	d.pSub("Servidores · Infraestrutura · Obras · Espaços · Projetos · Ofertas de cursos")
 	d.pEspaco()
 	if re.Fachada != nil {
 		d.pImagem(re.Fachada.Caminho, "Foto da fachada — capa do relatório de diagnóstico")
@@ -261,9 +261,37 @@ func (d *docxBuilder) montar(re Reporte) {
 		d.galeria(re.FotosAtual)
 	}
 
+	// obras realizadas
+	if len(re.Obras) > 0 {
+		d.pSecao("Seção 3", "Obras realizadas")
+		d.pTexto("Cada obra é registrada com fotos de antes e depois tiradas do mesmo ângulo e da mesma distância.")
+		for _, o := range re.Obras {
+			d.corpo.WriteString("<w:p>" + d.pPPr("", 40) + d.run(`<w:b/><w:color w:val="15803D"/><w:sz w:val="24"/>`, o.Nome) + "</w:p>")
+			d.pTexto(o.Descricao)
+			if len(o.Antes) > 0 {
+				d.pTexto("Antes da obra")
+				d.galeria(o.Antes)
+			}
+			if len(o.Depois) > 0 {
+				d.pTexto("Depois da obra")
+				d.galeria(o.Depois)
+			}
+		}
+	}
+
+	// espaços que precisam de revitalização
+	if len(re.Revitalizacao) > 0 {
+		d.pSecao("Seção 4", "Espaços que precisam de revitalização")
+		for _, r := range re.Revitalizacao {
+			d.corpo.WriteString("<w:p>" + d.pPPr("", 40) + d.run(`<w:b/><w:color w:val="15803D"/><w:sz w:val="24"/>`, r.Nome) + "</w:p>")
+			d.pTexto(r.Descricao)
+			d.galeria(r.Fotos)
+		}
+	}
+
 	// espaços
 	if len(re.Espacos) > 0 {
-		d.pSecao("Seção 3", "Espaços da escola")
+		d.pSecao("Seção 5", "Espaços da escola")
 		for _, e := range re.Espacos {
 			d.corpo.WriteString("<w:p>" + d.pPPr("", 40) + d.run(`<w:b/><w:color w:val="15803D"/><w:sz w:val="24"/>`, e.Nome) + "</w:p>")
 			d.pTexto(e.Descricao)
@@ -273,7 +301,7 @@ func (d *docxBuilder) montar(re Reporte) {
 
 	// projetos
 	if len(re.Projetos) > 0 {
-		d.pSecao("Seção 4", "Projetos")
+		d.pSecao("Seção 6", "Projetos")
 		for _, pr := range re.Projetos {
 			d.corpo.WriteString("<w:p>" + d.pPPr("", 40) + d.run(`<w:b/><w:color w:val="15803D"/><w:sz w:val="24"/>`, pr.Nome) + "</w:p>")
 			d.pTexto(pr.Descricao)
@@ -283,7 +311,7 @@ func (d *docxBuilder) montar(re Reporte) {
 
 	// cursos
 	if len(re.Cursos) > 0 {
-		d.pSecao("Seção 5", "Ofertas de cursos")
+		d.pSecao("Seção 7", "Ofertas de cursos")
 		for _, c := range re.Cursos {
 			d.pItem(c)
 		}

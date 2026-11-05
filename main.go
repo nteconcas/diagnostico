@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"diagnostico-escolar/internal/api"
 	"diagnostico-escolar/internal/auth"
 	"diagnostico-escolar/internal/db"
@@ -24,6 +26,30 @@ func ambiente(chave, padrao string) string {
 	return padrao
 }
 
+// abrirBanco conecta e aplica o schema, repetindo a operação enquanto o
+// PostgreSQL não estiver pronto. Em um deploy o container da aplicação pode
+// subir antes do banco aceitar conexões; assim o schema é ajustado com
+// segurança em vez de o processo encerrar na primeira tentativa.
+func abrirBanco(dsn string) (*pgxpool.Pool, error) {
+	const tentativas = 12
+	var ultimo error
+	for tentativa := 1; tentativa <= tentativas; tentativa++ {
+		pool, err := db.Conectar(dsn)
+		if err == nil {
+			if err = db.Migrar(pool); err == nil {
+				return pool, nil
+			}
+			pool.Close()
+		}
+		ultimo = err
+		if tentativa < tentativas {
+			log.Printf("Banco indisponível (tentativa %d/%d): %v — nova tentativa em 5s", tentativa, tentativas, err)
+			time.Sleep(5 * time.Second)
+		}
+	}
+	return nil, ultimo
+}
+
 func main() {
 	porta := ambiente("PORT", "8080")
 	dsn := ambiente("DATABASE_URL", "postgres://diag:diag@localhost:5433/diagnostico?sslmode=disable")
@@ -33,12 +59,9 @@ func main() {
 		log.Fatalf("Configuração do Cloudflare R2 inválida: %v", err)
 	}
 
-	pool, err := db.Conectar(dsn)
+	pool, err := abrirBanco(dsn)
 	if err != nil {
-		log.Fatalf("Não foi possível conectar ao PostgreSQL: %v", err)
-	}
-	if err := db.Migrar(pool); err != nil {
-		log.Fatalf("Erro ao aplicar o schema: %v", err)
+		log.Fatalf("Não foi possível conectar ao PostgreSQL e ajustar o schema: %v", err)
 	}
 	if err := auth.SeedAdmin(pool, ambiente("ADMIN_USUARIO", "admin"), os.Getenv("ADMIN_SENHA")); err != nil {
 		log.Fatalf("Erro ao criar o usuário administrador inicial: %v", err)

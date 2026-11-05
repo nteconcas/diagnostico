@@ -44,6 +44,21 @@ type ProjetoRep struct {
         Fotos     []FotoRep
 }
 
+// ObraRep é uma obra realizada, com o par de fotos antes/depois.
+type ObraRep struct {
+        Nome      string
+        Descricao string
+        Antes     []FotoRep
+        Depois    []FotoRep
+}
+
+// RevitalizacaoRep é um espaço da escola que precisa de revitalização.
+type RevitalizacaoRep struct {
+        Nome      string
+        Descricao string
+        Fotos     []FotoRep
+}
+
 // Reporte é o modelo pronto para os três formatos de saída.
 type Reporte struct {
         EscolaNome  string
@@ -68,6 +83,8 @@ type Reporte struct {
         FotosAtual    []FotoRep
         LabsFixos     []LabRep
         LabsOutros    []LabRep
+        Obras         []ObraRep
+        Revitalizacao []RevitalizacaoRep
         Espacos       []EspacoRep
         Projetos      []ProjetoRep
         Cursos        []string
@@ -151,6 +168,21 @@ func Montar(e Entrada) Reporte {
         }
         for _, esp := range d.Espacos {
                 re.Espacos = append(re.Espacos, EspacoRep{Nome: esp.Nome, Descricao: esp.Descricao, Fotos: paraFotos(esp.Fotos)})
+        }
+        for _, o := range d.Obras {
+                re.Obras = append(re.Obras, ObraRep{
+                        Nome:      o.Nome,
+                        Descricao: o.Descricao,
+                        Antes:     paraFotosComLegenda(o.FotosAntes, "Antes da obra"),
+                        Depois:    paraFotosComLegenda(o.FotosDepois, "Depois da obra"),
+                })
+        }
+        for _, r := range d.Revitalizacao {
+                re.Revitalizacao = append(re.Revitalizacao, RevitalizacaoRep{
+                        Nome:      r.Nome,
+                        Descricao: r.Descricao,
+                        Fotos:     paraFotos(r.Fotos),
+                })
         }
         for _, p := range d.Projetos {
                 re.Projetos = append(re.Projetos, ProjetoRep{p.Nome, p.Descricao, paraFotos(p.Fotos)})

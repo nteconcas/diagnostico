@@ -53,7 +53,7 @@ func (p *pdfDoc) faixaTitulo() {
         p.f.CellFormat(180, 8, p.tr("FORMULÁRIO DE DIAGNÓSTICO ESCOLAR"), "", 0, "L", false, 0, "")
         p.f.SetFont("Helvetica", "", 8.5)
         p.f.SetXY(15, 19)
-        p.f.CellFormat(180, 5, p.tr("Servidores · Infraestrutura · Espaços · Projetos · Ofertas de cursos"), "", 0, "L", false, 0, "")
+        p.f.CellFormat(180, 5, p.tr("Servidores · Infraestrutura · Obras · Espaços · Projetos · Ofertas de cursos"), "", 0, "L", false, 0, "")
 }
 
 func (p *pdfDoc) secao(sub, titulo string) {
@@ -321,9 +321,59 @@ func RenderPDF(re Reporte) ([]byte, error) {
         p.galeria(re.FotosAntes, "Registro fotográfico — antes da gestão 2023/2027")
         p.galeria(re.FotosAtual, "Registro fotográfico — gestão atual 2023/2027")
 
+        // ---- obras realizadas ----
+        if len(re.Obras) > 0 {
+                p.secao("Seção 3", "Obras realizadas")
+                f.SetFont("Helvetica", "", 9)
+                f.SetTextColor(corCinza[0], corCinza[1], corCinza[2])
+                f.SetX(15)
+                f.MultiCell(180, 4.8, p.tr("Cada obra é registrada com fotos de antes e depois tiradas do mesmo ângulo e da mesma distância."), "", "L", false)
+                f.Ln(1.6)
+                for _, o := range re.Obras {
+                        if f.GetY() > 240 {
+                                f.AddPage()
+                        }
+                        f.SetFont("Helvetica", "B", 11)
+                        f.SetTextColor(corVerde[0], corVerde[1], corVerde[2])
+                        f.SetX(15)
+                        f.CellFormat(0, 6.5, p.tr(o.Nome), "", 1, "L", false, 0, "")
+                        if o.Descricao != "" {
+                                f.SetFont("Helvetica", "", 9.5)
+                                f.SetTextColor(corTinta[0], corTinta[1], corTinta[2])
+                                f.SetX(15)
+                                f.MultiCell(180, 5.2, p.tr(o.Descricao), "", "L", false)
+                        }
+                        p.galeria(o.Antes, "Antes da obra")
+                        p.galeria(o.Depois, "Depois da obra")
+                        f.Ln(2)
+                }
+        }
+
+        // ---- espaços que precisam de revitalização ----
+        if len(re.Revitalizacao) > 0 {
+                p.secao("Seção 4", "Espaços que precisam de revitalização")
+                for _, r := range re.Revitalizacao {
+                        if f.GetY() > 240 {
+                                f.AddPage()
+                        }
+                        f.SetFont("Helvetica", "B", 11)
+                        f.SetTextColor(corVerde[0], corVerde[1], corVerde[2])
+                        f.SetX(15)
+                        f.CellFormat(0, 6.5, p.tr(r.Nome), "", 1, "L", false, 0, "")
+                        if r.Descricao != "" {
+                                f.SetFont("Helvetica", "", 9.5)
+                                f.SetTextColor(corTinta[0], corTinta[1], corTinta[2])
+                                f.SetX(15)
+                                f.MultiCell(180, 5.2, p.tr(r.Descricao), "", "L", false)
+                        }
+                        p.galeria(r.Fotos, "")
+                        f.Ln(2)
+                }
+        }
+
         // ---- espaços ----
         if len(re.Espacos) > 0 {
-                p.secao("Seção 3", "Espaços da escola")
+                p.secao("Seção 5", "Espaços da escola")
                 for _, e := range re.Espacos {
                         p.f.SetFont("Helvetica", "B", 10.5)
                         p.f.SetTextColor(corVerde[0], corVerde[1], corVerde[2])
@@ -341,7 +391,7 @@ func RenderPDF(re Reporte) ([]byte, error) {
 
         // ---- projetos ----
         if len(re.Projetos) > 0 {
-                p.secao("Seção 4", "Projetos")
+                p.secao("Seção 6", "Projetos")
                 for _, pr := range re.Projetos {
                         if f.GetY() > 240 {
                                 f.AddPage()
@@ -363,7 +413,7 @@ func RenderPDF(re Reporte) ([]byte, error) {
 
         // ---- cursos ----
         if len(re.Cursos) > 0 {
-                p.secao("Seção 5", "Ofertas de cursos")
+                p.secao("Seção 7", "Ofertas de cursos")
                 f.SetFont("Helvetica", "", 9.5)
                 f.SetTextColor(corTinta[0], corTinta[1], corTinta[2])
                 for _, c := range re.Cursos {

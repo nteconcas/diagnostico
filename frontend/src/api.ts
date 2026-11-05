@@ -68,6 +68,22 @@ export interface Projeto {
   fotos: Foto[]
 }
 
+// Obra realizada na unidade escolar: as fotos de antes e depois devem ser
+// tiradas do mesmo ângulo para evidenciar a transformação.
+export interface Obra {
+  nome: string
+  descricao: string
+  fotos_antes: Foto[]
+  fotos_depois: Foto[]
+}
+
+// Espaço que ainda precisa de revitalização, com descrição e fotos.
+export interface EspacoRevitalizacao {
+  nome: string
+  descricao: string
+  fotos: Foto[]
+}
+
 export interface Dados {
   responsavel: string
   foto_gestor: Foto | null
@@ -82,6 +98,8 @@ export interface Dados {
   fotos_atual: Foto[]
   labs: { maker: LabFixo; informatica: LabFixo; outros: LabOutro[] }
   espacos: Espaco[]
+  obras: Obra[]
+  revitalizacao: EspacoRevitalizacao[]
   projetos: Projeto[]
   cursos: string[]
 }
@@ -109,6 +127,8 @@ export function dadosVazios(): Dados {
       outros: [],
     },
     espacos: [],
+    obras: [],
+    revitalizacao: [],
     projetos: [],
     cursos: [],
   }
