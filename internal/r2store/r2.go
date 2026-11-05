@@ -66,9 +66,13 @@ func Novo(accountID, bucket, accessKey, secretKey, endpoint string) (*Cliente, e
 }
 
 func NovoDoAmbiente() (*Cliente, error) {
+	bucket := os.Getenv("R2_BUCKET")
+	if strings.TrimSpace(bucket) == "" {
+		bucket = os.Getenv("R2_BUCKET_NAME")
+	}
 	return Novo(
 		os.Getenv("R2_ACCOUNT_ID"),
-		os.Getenv("R2_BUCKET"),
+		bucket,
 		os.Getenv("R2_ACCESS_KEY_ID"),
 		os.Getenv("R2_SECRET_ACCESS_KEY"),
 		os.Getenv("R2_ENDPOINT"),
