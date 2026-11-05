@@ -71,6 +71,11 @@ go build -o diagnostico-escolar .
 O binário final **não precisa de Node, Go nem arquivos externos** — frontend e migrations
 estão embutidos.
 
+O `Dockerfile` faz essas etapas automaticamente em múltiplos estágios. No Dokploy, configure
+o diretório raiz como a raiz deste repositório e selecione esse `Dockerfile`; cada build
+compilará os fontes do commit implantado, sem usar o binário `diagnostico-escolar` existente
+no repositório.
+
 ## 4. Banco de dados
 
 Crie o banco e o usuário (em um PostgreSQL já instalado):
