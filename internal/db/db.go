@@ -28,14 +28,16 @@ func Conectar(dsn string) (*pgxpool.Pool, error) {
         return pool, nil
 }
 
-const schema = `
+const schemaEscolas = `
 CREATE TABLE IF NOT EXISTS escolas (
                 id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 nome      TEXT NOT NULL,
                 nte       TEXT NOT NULL DEFAULT '',
                 criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+`
 
+const schema = `
 CREATE TABLE IF NOT EXISTS usuarios (
         id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         username    TEXT NOT NULL UNIQUE,
@@ -91,7 +93,10 @@ type migration struct {
 }
 
 var migrations = []migration{
-        {version: 1, schema: schema},
+        {version: 1, schema: schemaEscolas},
+        // Repara bancos que registraram a versão 1 quando ela ainda continha todo o schema.
+        {version: 2, schema: schemaEscolas},
+        {version: 3, schema: schema},
 }
 
 // Migrar aplica, em ordem, as versões de schema ainda não registradas.
