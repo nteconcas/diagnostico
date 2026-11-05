@@ -46,7 +46,6 @@ type ProjetoRep struct {
 // Reporte é o modelo pronto para os três formatos de saída.
 type Reporte struct {
         EscolaNome  string
-        NTE         string
         Status      string
         Responsavel string
         Fachada     *FotoRep
@@ -106,7 +105,6 @@ func Montar(e Entrada) Reporte {
         d := e.Diag.Dados
         re := Reporte{
                 EscolaNome:  e.Diag.EscolaNome,
-                NTE:         e.Diag.NTE,
                 Status:      e.Diag.Status,
                 Responsavel: d.Responsavel,
                 Endereco:    d.Endereco,

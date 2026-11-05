@@ -15,6 +15,9 @@ import (
 var padraoArquivo = regexp.MustCompile(`^[0-9a-f]{16,64}\.(orig\.(jpg|jpeg|png|gif|webp)|t\.jpg|m\.jpg)$`)
 
 func (s *Servidor) fotoUpload(w http.ResponseWriter, r *http.Request) {
+	if !exigirPreenchador(w, r) {
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, 25<<20)
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		erroJSON(w, 400, "Arquivo muito grande ou requisição inválida (máximo: 20 MB por foto)")
@@ -62,6 +65,9 @@ func (s *Servidor) fotoUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Servidor) fotoExcluir(w http.ResponseWriter, r *http.Request) {
+	if !exigirPreenchador(w, r) {
+		return
+	}
 	id := r.PathValue("id")
 	var arquivo string
 	err := s.pool.QueryRow(r.Context(), `SELECT arquivo FROM fotos WHERE id = $1`, id).Scan(&arquivo)

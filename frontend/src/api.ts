@@ -130,7 +130,6 @@ export interface Diagnostico {
   atualizado_em: string
   enviado_em: string | null
   escola_nome: string
-  nte: string
 }
 
 export interface ResponsavelResumo {
@@ -142,7 +141,6 @@ export interface ResponsavelResumo {
 export interface EscolaResumo {
   id: string
   nome: string
-  nte: string
   criado_em: string
   ultimo_diagnostico_id: string | null
   status: 'rascunho' | 'enviado' | null
@@ -155,7 +153,6 @@ export interface ListaDiag {
   id: string
   escola_id: string
   escola_nome: string
-  nte: string
   status: string
   criado_em: string
   atualizado_em: string

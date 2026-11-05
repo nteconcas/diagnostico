@@ -40,7 +40,6 @@ type UsuarioResumo struct {
 type Escola struct {
         ID       string    `json:"id"`
         Nome     string    `json:"nome"`
-        NTE      string    `json:"nte"`
         CriadoEm time.Time `json:"criado_em"`
 }
 
@@ -337,5 +336,4 @@ type Diagnostico struct {
         EnviadoEm    *time.Time     `json:"enviado_em"`
         // Preenchidos nas consultas com JOIN:
         EscolaNome string `json:"escola_nome"`
-        NTE        string `json:"nte"`
 }

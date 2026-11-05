@@ -23,7 +23,6 @@ type corpoResponsavel struct {
 type escolaComStatus struct {
         ID            string                `json:"id"`
         Nome          string                `json:"nome"`
-        NTE           string                `json:"nte"`
         CriadoEm      time.Time             `json:"criado_em"`
         UltimoID      *string               `json:"ultimo_diagnostico_id"`
         Status        *string               `json:"status"`
@@ -35,7 +34,7 @@ type escolaComStatus struct {
 func (s *Servidor) escolasListar(w http.ResponseWriter, r *http.Request) {
         u := auth.UsuarioDoCtx(r)
         consulta := `
-                SELECT e.id::text, e.nome, e.nte, e.criado_em,
+                SELECT e.id::text, e.nome, e.criado_em,
                        d.id::text, d.status, d.atualizado_em, u2.nome
                 FROM escolas e
                 LEFT JOIN LATERAL (
@@ -60,7 +59,7 @@ func (s *Servidor) escolasListar(w http.ResponseWriter, r *http.Request) {
         lista := []escolaComStatus{}
         for linhas.Next() {
                 var e escolaComStatus
-                if err := linhas.Scan(&e.ID, &e.Nome, &e.NTE, &e.CriadoEm, &e.UltimoID, &e.Status, &e.AtualizadoEm, &e.AtualizadoPor); err == nil {
+                if err := linhas.Scan(&e.ID, &e.Nome, &e.CriadoEm, &e.UltimoID, &e.Status, &e.AtualizadoEm, &e.AtualizadoPor); err == nil {
                         e.Responsaveis = []model.UsuarioResumo{}
                         lista = append(lista, e)
                 }
@@ -93,7 +92,6 @@ func (s *Servidor) escolaCriar(w http.ResponseWriter, r *http.Request) {
         }
         var corpo struct {
                 Nome        string             `json:"nome"`
-                NTE         string             `json:"nte"`
                 Responsavel *corpoResponsavel  `json:"responsavel"`
         }
         if !readJSON(w, r, &corpo) {
@@ -124,8 +122,8 @@ func (s *Servidor) escolaCriar(w http.ResponseWriter, r *http.Request) {
 
         var id string
         err = tx.QueryRow(r.Context(),
-                `INSERT INTO escolas (nome, nte) VALUES ($1, $2) RETURNING id::text`,
-                corpo.Nome, corpo.NTE).Scan(&id)
+                `INSERT INTO escolas (nome) VALUES ($1) RETURNING id::text`,
+                corpo.Nome).Scan(&id)
         if err != nil {
                 erroJSON(w, 500, "Erro ao criar escola")
                 return
@@ -176,7 +174,7 @@ func (s *Servidor) escolaAtualizar(w http.ResponseWriter, r *http.Request) {
                 return
         }
         ct, err := s.pool.Exec(r.Context(),
-                `UPDATE escolas SET nome = $2, nte = $3 WHERE id = $1`, id, corpo.Nome, corpo.NTE)
+                `UPDATE escolas SET nome = $2 WHERE id = $1`, id, corpo.Nome)
         if err != nil || ct.RowsAffected() == 0 {
                 erroJSON(w, 404, "Escola não encontrada")
                 return
@@ -215,7 +213,7 @@ func (s *Servidor) carregarDiagnostico(ctx context.Context, id string) (model.Di
         var criadoID, atualizadoID *string
         err := s.pool.QueryRow(ctx, `
                 SELECT d.id::text, d.escola_id::text, d.status, d.dados, d.criado_em, d.atualizado_em, d.enviado_em,
-                       e.nome, e.nte,
+                       e.nome,
                        cu.id::text, cu.nome, cu.username,
                        au.id::text, au.nome, au.username
                 FROM diagnosticos d
@@ -224,7 +222,7 @@ func (s *Servidor) carregarDiagnostico(ctx context.Context, id string) (model.Di
                 LEFT JOIN usuarios au ON au.id = d.atualizado_por
                 WHERE d.id = $1`, id).
                 Scan(&d.ID, &d.EscolaID, &d.Status, &dadosBrutos, &d.CriadoEm, &d.AtualizadoEm, &d.EnviadoEm,
-                        &d.EscolaNome, &d.NTE,
+                        &d.EscolaNome,
                         &criadoID, &criadoNome, &criadoUser,
                         &atualizadoID, &atualizadoNome, &atualizadoUser)
         if errors.Is(err, pgx.ErrNoRows) {

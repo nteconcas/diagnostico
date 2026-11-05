@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, baixarArquivo, EscolaResumo, formatarData } from '../api'
+import { useAuth } from '../auth'
 
 export function Painel() {
+  const { usuario } = useAuth()
+  const admin = usuario?.papel === 'admin'
   const [escolas, setEscolas] = useState<EscolaResumo[]>([])
   const [carregando, setCarregando] = useState(true)
   const [baixando, setBaixando] = useState('')
@@ -42,11 +45,17 @@ export function Painel() {
       <div className="secao-titulo">
         <div>
           <h2>Painel de diagnósticos</h2>
-          <p className="desc">Acompanhe o preenchimento por unidade escolar e exporte os relatórios.</p>
+          <p className="desc">
+            {admin
+              ? 'Acompanhe os diagnósticos das unidades escolares e consulte os enviados.'
+              : 'Acompanhe o preenchimento por unidade escolar e exporte os relatórios.'}
+          </p>
         </div>
-        <button className="btn-primario" onClick={() => navegar('/formulario/novo')}>
-          ＋ Novo diagnóstico
-        </button>
+        {!admin && (
+          <button className="btn-primario" onClick={() => navegar('/formulario/novo')}>
+            ＋ Novo diagnóstico
+          </button>
+        )}
       </div>
 
       <div className="estatisticas">
@@ -90,7 +99,6 @@ export function Painel() {
             <thead>
               <tr>
                 <th>Unidade escolar</th>
-                <th>NTE</th>
                 <th>Último diagnóstico</th>
                 <th>Atualizado</th>
                 <th>Ações</th>
@@ -102,7 +110,6 @@ export function Painel() {
                   <td>
                     <strong>{e.nome}</strong>
                   </td>
-                  <td>{e.nte || '—'}</td>
                   <td>
                     {e.status === 'enviado' && <span className="status-chip enviado">✓ Encerrado</span>}
                     {e.status === 'rascunho' && <span className="status-chip rascunho">Rascunho</span>}
@@ -120,12 +127,12 @@ export function Painel() {
                   </td>
                   <td>
                     <div className="acoes-linha">
-                      {e.status === 'rascunho' && e.ultimo_diagnostico_id && (
+                      {!admin && e.status === 'rascunho' && e.ultimo_diagnostico_id && (
                         <Link className="btn-suave btn-mini" to={`/formulario/${e.ultimo_diagnostico_id}`}>
                           Continuar
                         </Link>
                       )}
-                      {!e.status && (
+                      {!admin && !e.status && (
                         <Link className="btn-primario btn-mini" to={`/formulario/novo?escola=${e.id}`}>
                           Preencher
                         </Link>

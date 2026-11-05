@@ -30,7 +30,6 @@ type listaDiag struct {
         ID            string     `json:"id"`
         EscolaID      string     `json:"escola_id"`
         EscolaNome    string     `json:"escola_nome"`
-        NTE           string     `json:"nte"`
         Status        string     `json:"status"`
         CriadoEm      time.Time  `json:"criado_em"`
         AtualizadoEm  time.Time  `json:"atualizado_em"`
@@ -39,9 +38,8 @@ type listaDiag struct {
         AtualizadoPor *string    `json:"atualizado_por"`
 }
 
-// podeEscola indica se o usuário pode manipular diagnósticos da escola.
-// Administradores e preenchidores sem vínculo veem tudo; responsáveis
-// vinculados ficam restritos à própria escola.
+// podeEscola indica se o preenchidor pode manipular diagnósticos da escola.
+// Responsáveis vinculados ficam restritos à própria escola.
 func podeEscola(u *model.Usuario, escolaID string) bool {
         return u == nil || u.EscolaID == nil || *u.EscolaID == escolaID
 }
@@ -53,7 +51,7 @@ func negadoEscola(w http.ResponseWriter) {
 func (s *Servidor) diagListar(w http.ResponseWriter, r *http.Request) {
         u := auth.UsuarioDoCtx(r)
         consulta := `
-                SELECT d.id::text, d.escola_id::text, e.nome, e.nte, d.status,
+                SELECT d.id::text, d.escola_id::text, e.nome, d.status,
                        d.criado_em, d.atualizado_em, d.enviado_em, cu.nome, au.nome
                 FROM diagnosticos d
                 JOIN escolas e ON e.id = d.escola_id
@@ -74,7 +72,7 @@ func (s *Servidor) diagListar(w http.ResponseWriter, r *http.Request) {
         lista := []listaDiag{}
         for linhas.Next() {
                 var l listaDiag
-                if err := linhas.Scan(&l.ID, &l.EscolaID, &l.EscolaNome, &l.NTE, &l.Status,
+                if err := linhas.Scan(&l.ID, &l.EscolaID, &l.EscolaNome, &l.Status,
                         &l.CriadoEm, &l.AtualizadoEm, &l.EnviadoEm, &l.CriadoPor, &l.AtualizadoPor); err == nil {
                         lista = append(lista, l)
                 }
@@ -83,6 +81,9 @@ func (s *Servidor) diagListar(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Servidor) diagCriar(w http.ResponseWriter, r *http.Request) {
+        if !exigirPreenchador(w, r) {
+                return
+        }
         var corpo struct {
                 EscolaID string `json:"escola_id"`
         }
@@ -93,9 +94,9 @@ func (s *Servidor) diagCriar(w http.ResponseWriter, r *http.Request) {
                 erroJSON(w, 400, "Selecione a escola que está sendo diagnosticada")
                 return
         }
-        var nome, nte string
+        var nome string
         err := s.pool.QueryRow(r.Context(),
-                `SELECT nome, nte FROM escolas WHERE id = $1`, corpo.EscolaID).Scan(&nome, &nte)
+                `SELECT nome FROM escolas WHERE id = $1`, corpo.EscolaID).Scan(&nome)
         if errors.Is(err, pgx.ErrNoRows) {
                 erroJSON(w, 404, "Escola não encontrada")
                 return
@@ -149,7 +150,12 @@ func (s *Servidor) diagObter(w http.ResponseWriter, r *http.Request) {
                 erroJSON(w, 500, "Erro ao carregar diagnóstico")
                 return
         }
-        if !podeEscola(auth.UsuarioDoCtx(r), d.EscolaID) {
+        u := auth.UsuarioDoCtx(r)
+        if u.Papel == "admin" && d.Status != "enviado" {
+                erroJSON(w, 403, "Administradores não podem acessar formulários em preenchimento")
+                return
+        }
+        if !podeEscola(u, d.EscolaID) {
                 negadoEscola(w)
                 return
         }
@@ -157,6 +163,9 @@ func (s *Servidor) diagObter(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Servidor) diagSalvarRascunho(w http.ResponseWriter, r *http.Request) {
+        if !exigirPreenchador(w, r) {
+                return
+        }
         id := r.PathValue("id")
         var corpo struct {
                 Dados model.Dados `json:"dados"`
@@ -206,6 +215,9 @@ func (s *Servidor) diagSalvarRascunho(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Servidor) diagEnviar(w http.ResponseWriter, r *http.Request) {
+        if !exigirPreenchador(w, r) {
+                return
+        }
         id := r.PathValue("id")
         d, err := s.carregarDiagnostico(r.Context(), id)
         if errors.Is(err, errNaoEncontrado) {

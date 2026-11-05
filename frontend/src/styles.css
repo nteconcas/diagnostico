@@ -390,3 +390,59 @@ table.dados tr:hover td { background: #f8fbff; }
 
 .galeria-mini { display: flex; flex-wrap: wrap; gap: 8px; }
 .galeria-mini img { width: 92px; height: 68px; object-fit: cover; border-radius: 8px; border: 1px solid var(--linha); }
+
+.escola-cadastro-cartao { padding: 20px; margin-bottom: 20px; }
+.escola-cadastro-nome { max-width: 720px; }
+.escola-cadastro-responsavel {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  main.pagina { padding: 16px 12px calc(40px + env(safe-area-inset-bottom)); }
+  header.app { position: static; }
+  .header-conteudo { padding: 10px 12px; align-items: flex-start; }
+  .header-conteudo h1 { font-size: 16px; }
+  .header-acoes { width: 100%; gap: 8px; }
+  .usuario-chip { flex: 1; min-width: 0; }
+  .usuario-chip > span:not(.papel-tag) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .formulario-pagina .secao-titulo { align-items: flex-start; }
+  .formulario-pagina .indicador-salvo { width: 100%; }
+  .formulario-pagina nav.secoes {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: 0 -12px;
+    padding: 8px 12px;
+    background: rgba(241, 245, 249, 0.97);
+    scroll-snap-type: x mandatory;
+  }
+  nav.secoes a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    scroll-snap-align: start;
+  }
+  .formulario-pagina section.bloco { scroll-margin-top: 60px; margin-bottom: 16px; }
+  .formulario-pagina .bloco-cabeca { padding: 16px 14px 10px; }
+  .formulario-pagina .bloco-corpo { padding: 14px; gap: 14px; }
+  .formulario-pagina .subcartao { padding: 12px; }
+
+  input[type='text'], input[type='password'], input[type='email'], input[type='number'], input[type='tel'], textarea, select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  button, .btn { min-height: 44px; justify-content: center; }
+  .btn-mini { min-height: 44px; padding: 8px 12px; font-size: 13px; }
+  .upload-foto .remover { width: 32px; height: 32px; }
+  .foto-unica img { max-width: 100%; height: auto; }
+  .exportar-grupo > a, .exportar-grupo > button { flex: 1 1 130px; }
+
+  .escola-cadastro-cartao { padding: 16px; }
+  .escola-cadastro-responsavel { grid-template-columns: 1fr; }
+  .modal-fundo { padding: 12px; }
+  .modal { padding: 18px; max-height: calc(100dvh - 24px); overflow-y: auto; }
+}

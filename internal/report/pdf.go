@@ -241,9 +241,9 @@ func RenderPDF(re Reporte) ([]byte, error) {
         f.SetFont("Helvetica", "", 10.5)
         f.SetTextColor(corCinza[0], corCinza[1], corCinza[2])
         f.SetXY(15, 52)
-        sub := p.tr("NTE " + re.NTE)
+        sub := ""
         if re.Responsavel != "" {
-                sub += p.tr("  ·  Responsável: " + re.Responsavel)
+                sub = p.tr("Responsável pelo preenchimento: " + re.Responsavel)
         }
         f.CellFormat(180, 6, sub, "", 0, "C", false, 0, "")
         if re.Fachada != nil {

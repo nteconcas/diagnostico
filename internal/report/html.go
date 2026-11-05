@@ -17,7 +17,7 @@ const tplHTML = `<!DOCTYPE html>
   .faixa h1 { font-size: 24px; letter-spacing:.3px; }
   .faixa p { opacity:.9; font-size: 13px; margin-top: 4px; }
   .capa h2 { font-size: 28px; margin: 30px 30px 4px; color: var(--azul-esc); }
-  .capa .nte { color: var(--cinza); font-size: 15px; margin-bottom: 18px; }
+  .capa .responsavel { color: var(--cinza); font-size: 15px; margin-bottom: 18px; }
   .capa img.fachada { width: 92%; max-width: 720px; aspect-ratio: 4 / 3; object-fit: contain; border: 1px solid var(--linha); border-radius: 8px; background: #fff; }
   .meta { display:flex; flex-wrap: wrap; gap: 12px; justify-content:center; margin: 26px 30px 0; }
   .meta div { background:#f8fafc; border:1px solid var(--linha); border-radius: 10px; padding: 10px 16px; font-size: 13.5px; }
@@ -64,7 +64,7 @@ const tplHTML = `<!DOCTYPE html>
   </div>
   <div class="capa">
     <h2>{{.EscolaNome}}</h2>
-    <p class="nte">NTE {{.NTE}}{{if .Responsavel}} · Responsável pelo preenchimento: {{.Responsavel}}{{end}}</p>
+    {{if .Responsavel}}<p class="responsavel">Responsável pelo preenchimento: {{.Responsavel}}</p>{{end}}
     {{if .Fachada}}<img class="fachada" src="data:image/jpeg;base64,{{b64 .Fachada.Caminho}}" alt="Fachada da escola">{{end}}
     <div class="meta">
       <div><b>Status</b>{{if eq .Status "enviado"}}Enviado{{else}}Rascunho{{end}}{{if .EnviadoEm}} — {{.EnviadoEm}}{{end}}</div>

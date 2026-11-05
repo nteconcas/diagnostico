@@ -196,11 +196,13 @@ func (d *docxBuilder) montar(re Reporte) {
 	}
 	d.pEspaco()
 	d.pNome(re.EscolaNome)
-	sub := "NTE " + re.NTE
+	sub := ""
 	if re.Responsavel != "" {
-		sub += "  ·  Responsável: " + re.Responsavel
+		sub = "Responsável pelo preenchimento: " + re.Responsavel
 	}
-	d.pSub(sub)
+	if sub != "" {
+		d.pSub(sub)
+	}
 	d.pTexto(re.Endereco)
 	if re.Status == "enviado" {
 		d.pSub("Enviado em " + re.EnviadoEm)

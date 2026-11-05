@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, Diagnostico, formatarData, fotoMedia, fotoThumb } from '../api'
+import { useAuth } from '../auth'
 
 // Envio mostra o diagnóstico enviado em modo somente leitura com as exportações.
 export function Envio() {
+  const { usuario } = useAuth()
+  const admin = usuario?.papel === 'admin'
   const { id } = useParams<{ id: string }>()
   const [diag, setDiag] = useState<Diagnostico | null>(null)
   const [erro, setErro] = useState('')
@@ -39,7 +42,9 @@ export function Envio() {
         <div>
           <h2>{diag.escola_nome}</h2>
           <p className="desc">
-            NTE {diag.nte || '—'} · <span className="status-chip enviado">✓ {diag.status === 'enviado' ? 'Enviado' : 'Rascunho'}</span>{' '}
+            <span className={'status-chip ' + (diag.status === 'enviado' ? 'enviado' : 'rascunho')}>
+              {diag.status === 'enviado' ? '✓ Enviado' : 'Rascunho'}
+            </span>{' '}
             {diag.enviado_em && <>· enviado em {formatarData(diag.enviado_em)}</>}
           </p>
         </div>
@@ -53,7 +58,7 @@ export function Envio() {
           <a className="btn-suave btn-mini" href={`/api/diagnosticos/${diag.id}/relatorio.html`} target="_blank" rel="noreferrer">
             ⬇ HTML
           </a>
-          {diag.status === 'rascunho' && (
+          {!admin && diag.status === 'rascunho' && (
             <Link className="btn-primario btn-mini" to={`/formulario/${diag.id}`}>
               Continuar preenchimento
             </Link>

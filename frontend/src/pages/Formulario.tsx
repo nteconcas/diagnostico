@@ -181,14 +181,13 @@ export function Formulario() {
   const escolasDisponiveis = escolas.filter((e) => !escolasComRascunho.has(e.id) || e.id === escolaId)
 
   return (
-    <>
+    <div className="formulario-pagina">
       <div className="secao-titulo">
         <div>
           <h2>{diag ? diag.escola_nome : 'Formulário de Diagnóstico'}</h2>
           <p className="desc">
             {diag ? (
               <>
-                NTE {diag.nte || '—'} ·{' '}
                 <span className={'status-chip ' + (enviado ? 'enviado' : 'rascunho')}>
                   {enviado ? '✓ Enviado' : 'Rascunho'}
                 </span>{' '}
@@ -275,14 +274,14 @@ export function Formulario() {
                 <option value="">Selecione a escola que está sendo diagnosticada…</option>
                 {escolasDisponiveis.map((e) => (
                   <option key={e.id} value={e.id}>
-                    {e.nome} {e.nte ? `— ${e.nte}` : ''}
+                    {e.nome}
                   </option>
                 ))}
               </select>
             </Campo>
           ) : (
             <Campo rotulo="Unidade escolar">
-              <input value={`${diag!.escola_nome}${diag!.nte ? ` — ${diag!.nte}` : ''}`} readOnly />
+              <input value={diag!.escola_nome} readOnly />
             </Campo>
           )}
 
@@ -1044,6 +1043,6 @@ export function Formulario() {
           </Bloco>
         )}
       </fieldset>
-    </>
+    </div>
   )
 }

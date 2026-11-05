@@ -10,8 +10,8 @@ infraestrutura (com registro fotográfico), espaços, projetos e ofertas de curs
 - **Fotos:** armazenadas em bucket privado Cloudflare R2, organizadas por slug da escola;
   miniatura, versão média e imagem 4:3 para relatórios são geradas no servidor
 - **Relatórios:** PDF (gofpdf), DOCX (OOXML nativo) e HTML autossuficiente (imagens em base64)
-- **Acesso:** login por usuário/senha com papéis `admin` (gerencia escolas e usuários) e
-  `preenchador` (preenche diagnósticos)
+- **Acesso:** login por usuário/senha com papéis `admin` (gerencia escolas e usuários e consulta
+  os envios) e `preenchador` (preenche diagnósticos)
 
 ---
 

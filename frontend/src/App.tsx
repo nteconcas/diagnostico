@@ -8,7 +8,15 @@ import { Usuarios } from './pages/Usuarios'
 import { Formulario } from './pages/Formulario'
 import { Envio } from './pages/Envio'
 
-function Protegido({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
+function Protegido({
+  children,
+  admin = false,
+  preenchimento = false,
+}: {
+  children: React.ReactNode
+  admin?: boolean
+  preenchimento?: boolean
+}) {
   const { usuario, carregando } = useAuth()
   if (carregando) {
     return (
@@ -19,6 +27,7 @@ function Protegido({ children, admin = false }: { children: React.ReactNode; adm
   }
   if (!usuario) return <Navigate to="/login" replace />
   if (admin && usuario.papel !== 'admin') return <Navigate to="/" replace />
+  if (preenchimento && usuario.papel === 'admin') return <Navigate to="/" replace />
   return <>{children}</>
 }
 
@@ -34,7 +43,14 @@ export default function App() {
         }
       >
         <Route path="/" element={<Painel />} />
-        <Route path="/formulario/:id" element={<Formulario />} />
+        <Route
+          path="/formulario/:id"
+          element={
+            <Protegido preenchimento>
+              <Formulario />
+            </Protegido>
+          }
+        />
         <Route path="/envios/:id" element={<Envio />} />
         <Route
           path="/escolas"

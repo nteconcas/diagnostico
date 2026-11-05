@@ -5,11 +5,10 @@ export function Escolas() {
   const [escolas, setEscolas] = useState<EscolaResumo[]>([])
   const [baixando, setBaixando] = useState('')
   const [nome, setNome] = useState('')
-  const [nte, setNte] = useState('')
   const [respNome, setRespNome] = useState('')
   const [respUsuario, setRespUsuario] = useState('')
   const [respSenha, setRespSenha] = useState('')
-  const [editando, setEditando] = useState<{ id: string; nome: string; nte: string } | null>(null)
+  const [editando, setEditando] = useState<{ id: string; nome: string } | null>(null)
   const [erro, setErro] = useState('')
   const [ok, setOk] = useState('')
 
@@ -24,7 +23,7 @@ export function Escolas() {
     setOk('')
     try {
       const temResponsavel = respNome.trim() || respUsuario.trim() || respSenha
-      const corpo: Record<string, unknown> = { nome, nte }
+      const corpo: Record<string, unknown> = { nome }
       if (temResponsavel) {
         corpo.responsavel = { nome: respNome, username: respUsuario, senha: respSenha }
       }
@@ -33,7 +32,6 @@ export function Escolas() {
         body: JSON.stringify(corpo),
       })
       setNome('')
-      setNte('')
       setRespNome('')
       setRespUsuario('')
       setRespSenha('')
@@ -54,7 +52,7 @@ export function Escolas() {
     try {
       await api(`/api/escolas/${editando.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ nome: editando.nome, nte: editando.nte }),
+        body: JSON.stringify({ nome: editando.nome }),
       })
       setEditando(null)
       setOk('Escola atualizada.')
@@ -111,25 +109,18 @@ export function Escolas() {
         </div>
       )}
 
-      <div className="cartao" style={{ padding: 20, marginBottom: 20 }}>
+      <div className="cartao escola-cadastro-cartao">
         <h4 style={{ marginBottom: 4 }}>Nova escola</h4>
         <p className="desc" style={{ marginBottom: 12 }}>
           Preencha o usuário responsável para criar automaticamente o acesso dele — quem vai
           preencher o diagnóstico da escola com a senha definida aqui.
         </p>
         <form onSubmit={criar}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 12 }}>
-            <div>
-              <label className="rotulo">Nome da unidade escolar *</label>
-              <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: C. E. Tancredo Neves" required />
-            </div>
-            <div>
-              <label className="rotulo">NTE</label>
-              <input value={nte} onChange={(e) => setNte(e.target.value)} placeholder="Ex.: NTE 3" />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end' }} />
+          <div className="escola-cadastro-nome">
+            <label className="rotulo">Nome da unidade escolar *</label>
+            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: C. E. Tancredo Neves" required />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginTop: 12 }}>
+          <div className="escola-cadastro-responsavel">
             <div>
               <label className="rotulo">Responsável pelo diagnóstico <span className="opcional">(opcional)</span></label>
               <input value={respNome} onChange={(e) => setRespNome(e.target.value)} placeholder="Nome completo" />
@@ -156,7 +147,6 @@ export function Escolas() {
           <thead>
             <tr>
               <th>Unidade escolar</th>
-              <th>NTE</th>
               <th>Responsável(is)</th>
               <th>Diagnóstico</th>
               <th style={{ width: 210 }}>Relatórios</th>
@@ -166,7 +156,7 @@ export function Escolas() {
           <tbody>
             {escolas.length === 0 && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={5}>
                   <div className="vazio">Nenhuma escola cadastrada.</div>
                 </td>
               </tr>
@@ -178,13 +168,6 @@ export function Escolas() {
                     <input value={editando.nome} onChange={(ev) => setEditando({ ...editando, nome: ev.target.value })} />
                   ) : (
                     <strong>{e.nome}</strong>
-                  )}
-                </td>
-                <td>
-                  {editando?.id === e.id ? (
-                    <input value={editando.nte} onChange={(ev) => setEditando({ ...editando, nte: ev.target.value })} />
-                  ) : (
-                    e.nte || '—'
                   )}
                 </td>
                 <td>
@@ -263,7 +246,7 @@ export function Escolas() {
                       <>
                         <button
                           className="btn-suave btn-mini"
-                          onClick={() => setEditando({ id: e.id, nome: e.nome, nte: e.nte })}
+                          onClick={() => setEditando({ id: e.id, nome: e.nome })}
                         >
                           Editar
                         </button>

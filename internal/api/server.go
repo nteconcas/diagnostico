@@ -104,3 +104,12 @@ func exigirAdmin(w http.ResponseWriter, r *http.Request) bool {
         }
         return true
 }
+
+func exigirPreenchador(w http.ResponseWriter, r *http.Request) bool {
+        u := auth.UsuarioDoCtx(r)
+        if u == nil || u.Papel == "admin" {
+                erroJSON(w, 403, "Administradores não podem preencher formulários")
+                return false
+        }
+        return true
+}
