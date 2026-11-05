@@ -294,6 +294,59 @@ export function Formulario() {
     }
   }
 
+  async function salvarRascunho() {
+    if (!diag || enviado || estadoSalvamento === 'salvando') return
+    window.clearTimeout(timer.current)
+    window.clearTimeout(retryTimer.current)
+
+    const snapshot = dados
+    const versao = versaoDados.current
+    const chaveLocal = chaveRascunhoLocal(diag.id, usuario?.id)
+    try {
+      const atualizadoEm = Math.max(Date.now(), ultimaAtualizacaoLocal.current + 1)
+      ultimaAtualizacaoLocal.current = atualizadoEm
+      localStorage.setItem(chaveLocal, JSON.stringify({ atualizadoEm, dados: snapshot } satisfies RascunhoLocal))
+    } catch {
+      erroArmazenamentoLocal.current = true
+    }
+
+    setEstadoSalvamento('salvando')
+    setErroSalvamento('')
+    const request = filaSalvamento.current.then(() =>
+      api<{ ok: boolean }>(`/api/diagnosticos/${diag.id}/rascunho`, {
+        method: 'PUT',
+        body: JSON.stringify({ dados: snapshot }),
+      }),
+    )
+    filaSalvamento.current = request.then(() => undefined, () => undefined)
+
+    try {
+      await request
+      ultimaVersaoSalva.current = Math.max(ultimaVersaoSalva.current, versao)
+      if (versao !== versaoDados.current) {
+        setEstadoSalvamento('pendente')
+        return
+      }
+      try {
+        const bruto = localStorage.getItem(chaveLocal)
+        if (bruto) {
+          const local = JSON.parse(bruto) as RascunhoLocal
+          if (local.dados && JSON.stringify(local.dados) === JSON.stringify(snapshot)) {
+            localStorage.removeItem(chaveLocal)
+          }
+        }
+      } catch {
+        erroArmazenamentoLocal.current = true
+      }
+      setSalvoEm(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
+      setEstadoSalvamento('salvo')
+      setErroSalvamento('')
+    } catch (erro) {
+      setEstadoSalvamento('erro')
+      setErroSalvamento(erro instanceof Error ? erro.message : 'Não foi possível salvar o rascunho.')
+    }
+  }
+
   function capturarGPS() {
     if (!navigator.geolocation) {
       alert('Este navegador não suporta captura de localização.')
@@ -401,6 +454,16 @@ export function Formulario() {
               )
             )}
           </div>
+          {diag && !enviado && (
+            <button
+              type="button"
+              className="btn-primario btn-mini"
+              disabled={estadoSalvamento === 'salvando'}
+              onClick={salvarRascunho}
+            >
+              {estadoSalvamento === 'salvando' ? 'Salvando…' : 'Salvar rascunho'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1231,6 +1294,14 @@ export function Formulario() {
               </div>
             ) : (
               <>
+                <button
+                  type="button"
+                  className="btn-suave"
+                  disabled={estadoSalvamento === 'salvando'}
+                  onClick={salvarRascunho}
+                >
+                  {estadoSalvamento === 'salvando' ? 'Salvando…' : 'Salvar rascunho'}
+                </button>
                 {!podeEnviar && (
                   <div className="aviso">
                     Complete os itens marcados com ✕ acima para habilitar o envio. O rascunho é salvo automaticamente.

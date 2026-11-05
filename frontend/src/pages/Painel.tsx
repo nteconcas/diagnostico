@@ -129,7 +129,7 @@ export function Painel() {
                     <div className="acoes-linha">
                       {!admin && e.status === 'rascunho' && e.ultimo_diagnostico_id && (
                         <Link className="btn-suave btn-mini" to={`/formulario/${e.ultimo_diagnostico_id}`}>
-                          Continuar
+                          Editar rascunho
                         </Link>
                       )}
                       {!admin && !e.status && (
