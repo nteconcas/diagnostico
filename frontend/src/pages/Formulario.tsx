@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   api,
@@ -8,6 +8,7 @@ import {
   ErroAPI,
   formatarData,
   fotoMedia,
+  tokenAtual,
 } from '../api'
 import { dadosVazios } from '../api'
 import { useAuth } from '../auth'
@@ -30,13 +31,27 @@ export function Formulario() {
   const [carregando, setCarregando] = useState(!novo)
   const [erroFatal, setErroFatal] = useState('')
   const [salvoEm, setSalvoEm] = useState('')
-  const [salvando, setSalvando] = useState(false)
+  const [estadoSalvamento, setEstadoSalvamento] = useState<
+    'aguardando' | 'pendente' | 'salvando' | 'salvo' | 'erro'
+  >('aguardando')
+  const [erroSalvamento, setErroSalvamento] = useState('')
   const [pendencias, setPendencias] = useState<string[]>([])
   const [enviadoOk, setEnviadoOk] = useState(false)
   const [novoEspaco, setNovoEspaco] = useState('')
   const [novoCurso, setNovoCurso] = useState('')
   const [novoLab, setNovoLab] = useState('')
   const timer = useRef<number | undefined>(undefined)
+  const retryTimer = useRef<number | undefined>(undefined)
+  const versaoDados = useRef(0)
+  const ultimaVersaoSalva = useRef(0)
+  const ultimaVersaoKeepalive = useRef(-1)
+  const filaSalvamento = useRef<Promise<void>>(Promise.resolve())
+  const dadosAtuais = useRef(dados)
+
+  useLayoutEffect(() => {
+    dadosAtuais.current = dados
+    versaoDados.current += 1
+  }, [dados])
 
   useEffect(() => {
     api<EscolaResumo[]>('/api/escolas').then(setEscolas).catch(() => {})
@@ -59,6 +74,10 @@ export function Formulario() {
           dadosCarregados.responsavel ||= usuario?.nome ?? ''
         }
         setDados(dadosCarregados)
+        if (d.status === 'rascunho') {
+          setSalvoEm(new Date(d.atualizado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
+          setEstadoSalvamento('pendente')
+        }
         setCarregando(false)
       })
       .catch((e) => {
@@ -97,19 +116,101 @@ export function Formulario() {
   // salvamento automático do rascunho
   useEffect(() => {
     if (!diag || diag.status !== 'rascunho') return
+    const versao = versaoDados.current
     window.clearTimeout(timer.current)
+    window.clearTimeout(retryTimer.current)
+    setEstadoSalvamento('pendente')
+    setErroSalvamento('')
+
+    function salvar(snapshot: Dados, versaoSnapshot: number) {
+      if (versaoSnapshot === versaoDados.current) setEstadoSalvamento('salvando')
+      const request = filaSalvamento.current.then(() =>
+        api(`/api/diagnosticos/${diag.id}/rascunho`, {
+          method: 'PUT',
+          body: JSON.stringify({ dados: snapshot }),
+        }),
+      )
+      filaSalvamento.current = request.then(() => undefined, () => undefined)
+      request.then(
+        () => {
+          ultimaVersaoSalva.current = Math.max(ultimaVersaoSalva.current, versaoSnapshot)
+          if (versaoSnapshot !== versaoDados.current) return
+          setSalvoEm(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
+          setEstadoSalvamento('salvo')
+          setErroSalvamento('')
+        },
+        (erro: unknown) => {
+          if (versaoSnapshot !== versaoDados.current) return
+          setEstadoSalvamento('erro')
+          setErroSalvamento(erro instanceof Error ? erro.message : 'Falha ao salvar o rascunho.')
+          retryTimer.current = window.setTimeout(
+            () => salvar(dadosAtuais.current, versaoSnapshot),
+            3000,
+          )
+        },
+      )
+    }
+
     timer.current = window.setTimeout(() => {
-      setSalvando(true)
-      api(`/api/diagnosticos/${diag.id}/rascunho`, {
-        method: 'PUT',
-        body: JSON.stringify({ dados }),
-      })
-        .then(() => setSalvoEm(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })))
-        .catch(() => {})
-        .finally(() => setSalvando(false))
+      salvar(dados, versao)
     }, 900)
-    return () => window.clearTimeout(timer.current)
+    return () => {
+      window.clearTimeout(timer.current)
+      window.clearTimeout(retryTimer.current)
+    }
   }, [dados, diag])
+
+  // Envia a versão mais recente mesmo quando a página é ocultada ou encerrada.
+  useEffect(() => {
+    if (!diag || diag.status !== 'rascunho') return
+
+    function salvarAoSair() {
+      const versao = versaoDados.current
+      if (versao <= ultimaVersaoSalva.current || versao === ultimaVersaoKeepalive.current) return
+      ultimaVersaoKeepalive.current = versao
+
+      const token = tokenAtual()
+      void fetch(`/api/diagnosticos/${diag.id}/rascunho`, {
+        method: 'PUT',
+        credentials: 'same-origin',
+        keepalive: true,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ dados: dadosAtuais.current }),
+      }).then((resposta) => {
+        if (!resposta.ok && versao === versaoDados.current) {
+          setEstadoSalvamento('erro')
+          setErroSalvamento('Não foi possível confirmar o salvamento antes de sair.')
+        } else if (resposta.ok) {
+          ultimaVersaoSalva.current = Math.max(ultimaVersaoSalva.current, versao)
+          if (versao === versaoDados.current) {
+            setSalvoEm(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
+            setEstadoSalvamento('salvo')
+            setErroSalvamento('')
+          }
+        }
+      }).catch(() => {
+        if (versao === versaoDados.current) {
+          setEstadoSalvamento('erro')
+          setErroSalvamento('Sem conexão para confirmar o salvamento. Tentaremos novamente.')
+        }
+      })
+    }
+
+    function aoMudarVisibilidade() {
+      if (document.visibilityState === 'hidden') salvarAoSair()
+    }
+
+    window.addEventListener('pagehide', salvarAoSair)
+    document.addEventListener('visibilitychange', aoMudarVisibilidade)
+    return () => {
+      window.removeEventListener('pagehide', salvarAoSair)
+      document.removeEventListener('visibilitychange', aoMudarVisibilidade)
+      salvarAoSair()
+    }
+  }, [diag])
 
   async function enviar() {
     if (!diag) return
@@ -214,15 +315,24 @@ export function Formulario() {
             </span>
           )}
           <div className="indicador-salvo">
-            {diag && !enviado &&
-              (salvando ? (
-                <>Salvando…</>
+            {diag && !enviado && (
+              estadoSalvamento === 'salvando' || estadoSalvamento === 'pendente' ? (
+                <>
+                  {estadoSalvamento === 'salvando' ? 'Salvando alterações…' : 'Alterações pendentes de salvamento…'}
+                  {salvoEm && <span>Último salvamento: {salvoEm}</span>}
+                </>
+              ) : estadoSalvamento === 'erro' ? (
+                <span className="indicador-salvo-erro" role="status">
+                  Falha ao salvar; tentando novamente. {erroSalvamento}
+                  {salvoEm && ` Último salvamento: ${salvoEm}.`}
+                </span>
               ) : (
                 <>
-                  <span className="ponto-verde" />{' '}
-                  {salvoEm ? `Rascunho salvo às ${salvoEm}` : 'Salvamento automático ativo'}
+                  <span className="ponto-verde" />
+                  {salvoEm ? `Salvo às ${salvoEm}` : 'Salvamento automático ativo'}
                 </>
-              ))}
+              )
+            )}
           </div>
         </div>
       </div>
@@ -1060,7 +1170,12 @@ export function Formulario() {
                   </div>
                 )}
                 <div>
-                  <button type="button" className="btn-verde" disabled={!podeEnviar || salvando} onClick={enviar}>
+                  <button
+                    type="button"
+                    className="btn-verde"
+                    disabled={!podeEnviar || estadoSalvamento !== 'salvo'}
+                    onClick={enviar}
+                  >
                     📨 Enviar formulário
                   </button>
                 </div>
