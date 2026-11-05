@@ -27,8 +27,27 @@ type Cliente struct {
 }
 
 func Novo(accountID, bucket, accessKey, secretKey, endpoint string) (*Cliente, error) {
-	if accountID == "" || bucket == "" || accessKey == "" || secretKey == "" {
-		return nil, fmt.Errorf("configure R2_ACCOUNT_ID, R2_BUCKET, R2_ACCESS_KEY_ID e R2_SECRET_ACCESS_KEY")
+	accountID = strings.TrimSpace(accountID)
+	bucket = strings.TrimSpace(bucket)
+	accessKey = strings.TrimSpace(accessKey)
+	secretKey = strings.TrimSpace(secretKey)
+	endpoint = strings.TrimSpace(endpoint)
+	var faltando []string
+	for _, variavel := range []struct {
+		nome  string
+		valor string
+	}{
+		{"R2_ACCOUNT_ID", accountID},
+		{"R2_BUCKET", bucket},
+		{"R2_ACCESS_KEY_ID", accessKey},
+		{"R2_SECRET_ACCESS_KEY", secretKey},
+	} {
+		if variavel.valor == "" {
+			faltando = append(faltando, variavel.nome)
+		}
+	}
+	if len(faltando) > 0 {
+		return nil, fmt.Errorf("variáveis ausentes no ambiente do app: %s", strings.Join(faltando, ", "))
 	}
 	if endpoint == "" {
 		endpoint = "https://" + accountID + ".r2.cloudflarestorage.com"

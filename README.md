@@ -55,6 +55,10 @@ O `.env.example` é um modelo: o binário não carrega arquivos `.env` por conta
 Docker Compose e a unit systemd fornecidos carregam as variáveis por configuração. Para
 execução manual no Linux, exporte as variáveis antes de iniciar o binário.
 
+Em deploys pelo Dokploy usando o `Dockerfile` diretamente, cadastre as variáveis `R2_ACCOUNT_ID`,
+`R2_BUCKET`, `R2_ACCESS_KEY_ID` e `R2_SECRET_ACCESS_KEY` no ambiente do serviço da aplicação.
+As credenciais configuradas em outro app ou no ambiente do host não são herdadas pelo container.
+
 ## 3. Compilação
 
 ```bash
