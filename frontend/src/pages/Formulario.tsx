@@ -191,6 +191,13 @@ export function Formulario() {
       })
   }
 
+  // Repete a criação/retomada do rascunho depois de uma falha (ex.: queda de
+  // rede ou erro momentâneo do servidor). Os dados digitados continuam na tela.
+  function tentarCriarNovamente() {
+    setErroFatal('')
+    if (escolaId) escolherEscola(escolaId)
+  }
+
   // ---- apoio ao salvamento do rascunho ----
 
   // Guarda a cópia de segurança no navegador (usada quando o envio falha).
@@ -468,6 +475,13 @@ export function Formulario() {
     return (
       <div className="erro-caixa">
         {erroFatal} — <a href="/">voltar ao painel</a>
+        {novo && !diag && escolaId && (
+          <div className="acoes-linha" style={{ marginTop: 10 }}>
+            <button type="button" className="btn-primario btn-mini" onClick={tentarCriarNovamente}>
+              Tentar novamente
+            </button>
+          </div>
+        )}
       </div>
     )
   }
