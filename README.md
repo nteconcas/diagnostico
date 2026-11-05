@@ -89,6 +89,10 @@ docker compose --env-file .env -f deploy/docker-compose.yml up -d
 As tabelas são criadas automaticamente na primeira execução do app
 (`usuarios`, `sessoes`, `escolas`, `fotos`, `diagnosticos`).
 
+Ao iniciar, o app aplica automaticamente as migrações pendentes e registra suas versões em
+`schema_migrations`. Alterações futuras no banco devem ser adicionadas como uma nova versão
+em `internal/db/db.go`; não basta alterar uma migração que já foi aplicada.
+
 ## 5. Execução
 
 ```bash

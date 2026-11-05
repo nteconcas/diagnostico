@@ -3,6 +3,7 @@ package db
 
 import (
         "context"
+        "fmt"
         "time"
 
         "github.com/jackc/pgx/v5/pgxpool"
@@ -84,8 +85,51 @@ CREATE INDEX IF NOT EXISTS idx_sessoes_expira ON sessoes (expira_em);
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS escola_id UUID REFERENCES escolas(id) ON DELETE SET NULL;
 `
 
-// Migrar cria as tabelas caso ainda não existam.
+type migration struct {
+        version int
+        schema  string
+}
+
+var migrations = []migration{
+        {version: 1, schema: schema},
+}
+
+// Migrar aplica, em ordem, as versões de schema ainda não registradas.
 func Migrar(pool *pgxpool.Pool) error {
-        _, err := pool.Exec(context.Background(), schema)
-        return err
+        ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+        defer cancel()
+
+        tx, err := pool.Begin(ctx)
+        if err != nil {
+                return err
+        }
+        defer tx.Rollback(ctx)
+
+        if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(641928301)`); err != nil {
+                return err
+        }
+        if _, err := tx.Exec(ctx, `
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                        version INTEGER PRIMARY KEY,
+                        applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                )`); err != nil {
+                return err
+        }
+
+        var aplicada int
+        if err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(version), 0) FROM schema_migrations`).Scan(&aplicada); err != nil {
+                return err
+        }
+        for _, m := range migrations {
+                if m.version <= aplicada {
+                        continue
+                }
+                if _, err := tx.Exec(ctx, m.schema); err != nil {
+                        return fmt.Errorf("migração de schema %d: %w", m.version, err)
+                }
+                if _, err := tx.Exec(ctx, `INSERT INTO schema_migrations (version) VALUES ($1)`, m.version); err != nil {
+                        return err
+                }
+        }
+        return tx.Commit(ctx)
 }
