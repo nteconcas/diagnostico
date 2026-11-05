@@ -164,9 +164,13 @@ export interface ListaDiag {
 
 export class ErroAPI extends Error {
   pendencias?: string[]
-  constructor(mensagem: string, pendencias?: string[]) {
+  // Status HTTP da resposta: permite distinguir falhas temporárias (rede, 5xx)
+  // de falhas definitivas (403 sem permissão, 404, 409 rascunho já enviado).
+  status?: number
+  constructor(mensagem: string, pendencias?: string[], status?: number) {
     super(mensagem)
     this.pendencias = pendencias
+    this.status = status
   }
 }
 
@@ -188,7 +192,7 @@ export async function api<T>(caminho: string, opcoes?: RequestInit): Promise<T> 
   }
   if (!resposta.ok) {
     const corpo = await resposta.json().catch(() => ({ erro: 'Erro inesperado' }))
-    throw new ErroAPI(corpo.erro ?? 'Erro inesperado', corpo.pendencias)
+    throw new ErroAPI(corpo.erro ?? 'Erro inesperado', corpo.pendencias, resposta.status)
   }
   return resposta.json()
 }
@@ -233,7 +237,7 @@ export async function baixarArquivo(caminho: string, nomePadrao: string): Promis
   }
   if (!resposta.ok) {
     const corpo = await resposta.json().catch(() => ({ erro: 'Erro inesperado' }))
-    throw new ErroAPI(corpo.erro ?? 'Erro inesperado')
+    throw new ErroAPI(corpo.erro ?? 'Erro inesperado', undefined, resposta.status)
   }
   const blob = await resposta.blob()
   const disposicao = resposta.headers.get('Content-Disposition') ?? ''

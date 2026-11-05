@@ -18,12 +18,46 @@ import { Bloco, Campo, CampoNumero, CampoTexto, Metrica } from '../components/ca
 const SUGESTOES_ESPACOS = ['Biblioteca', 'Refeitório', 'Área externa', 'Área de lazer']
 
 interface RascunhoLocal {
+  // Relógio do navegador: usado apenas para ordenar cópias locais.
   atualizadoEm: number
+  // Versão do servidor (atualizado_em) sobre a qual a cópia local foi editada.
+  // Permite decidir qual cópia é a mais recente sem depender do relógio do
+  // navegador estar sincronizado com o do servidor.
+  baseServidorEm?: string | null
   dados: Dados
 }
 
 function chaveRascunhoLocal(diagnosticoId: string, usuarioId?: string): string {
   return `diagnostico-rascunho:${usuarioId ?? 'usuario'}:${diagnosticoId}`
+}
+
+// serializar gera uma representação estável (chaves ordenadas) dos dados, para
+// comparar a cópia local com o que está gravado no servidor.
+function serializar(valor: unknown): string {
+  if (Array.isArray(valor)) return `[${valor.map(serializar).join(',')}]`
+  if (valor && typeof valor === 'object') {
+    const objeto = valor as Record<string, unknown>
+    const chaves = Object.keys(objeto)
+      .filter((k) => objeto[k] !== undefined)
+      .sort()
+    return `{${chaves.map((k) => `${JSON.stringify(k)}:${serializar(objeto[k])}`).join(',')}}`
+  }
+  return JSON.stringify(valor ?? null)
+}
+
+// copiaLocalDevePrevalecer indica se a cópia guardada no navegador tem edições
+// que ainda não chegaram ao servidor (ex.: formulário fechado sem conexão).
+function copiaLocalDevePrevalecer(local: RascunhoLocal, servidor: Diagnostico, dadosServidor: Dados): boolean {
+  if (!local?.dados || typeof local.dados !== 'object') return false
+  // Nada a recuperar quando o servidor já tem exatamente os mesmos dados.
+  if (serializar({ ...dadosVazios(), ...local.dados }) === serializar(dadosServidor)) return false
+  // Cópia editada sobre a versão que o servidor ainda guarda: as edições locais
+  // são mais novas do que o registro gravado, mesmo com relógios diferentes.
+  if (local.baseServidorEm && local.baseServidorEm === servidor.atualizado_em) return true
+  // Sem versão de referência (cópias antigas) ou registro alterado depois no
+  // servidor: decide pelo relógio do navegador, como último recurso.
+  const relogioServidor = new Date(servidor.atualizado_em).getTime()
+  return Number.isFinite(local.atualizadoEm) && local.atualizadoEm > relogioServidor
 }
 
 export function Formulario() {
@@ -58,6 +92,10 @@ export function Formulario() {
   const filaSalvamento = useRef<Promise<void>>(Promise.resolve())
   const dadosAtuais = useRef(dados)
   const erroArmazenamentoLocal = useRef(false)
+  // Evita criar dois rascunhos quando a escola é definida por vínculo/URL.
+  const criandoRascunho = useRef(false)
+  // Última versão (atualizado_em) confirmada pelo servidor.
+  const baseServidorEm = useRef<string | null>(null)
 
   useLayoutEffect(() => {
     dadosAtuais.current = dados
@@ -68,16 +106,21 @@ export function Formulario() {
     api<EscolaResumo[]>('/api/escolas').then(setEscolas).catch(() => {})
   }, [])
 
-  // Responsável vinculado à escola abre direto o diagnóstico dela, sem escolher.
+  // Cria o rascunho assim que a escola está definida — pelo vínculo do
+  // responsável (usuario.escola_id) ou pela escola escolhida no painel/URL
+  // (?escola=...). Assim o preenchimento nunca começa sem um rascunho salvo.
   useEffect(() => {
-    if (novo && !escolaId && usuario?.escola_id) escolherEscola(usuario.escola_id)
-  }, [novo, escolaId, usuario?.escola_id])
+    if (!novo || diag) return
+    const alvo = escolaId || usuario?.escola_id || ''
+    if (alvo) escolherEscola(alvo)
+  }, [novo, diag, escolaId, usuario?.escola_id])
 
   useEffect(() => {
     if (novo) return
     api<Diagnostico>(`/api/diagnosticos/${id}`)
       .then((d) => {
         setDiag(d)
+        baseServidorEm.current = d.atualizado_em
         let dadosCarregados = { ...dadosVazios(), ...d.dados }
         if (d.status === 'rascunho') {
           try {
@@ -85,12 +128,7 @@ export function Formulario() {
             const bruto = localStorage.getItem(chave)
             if (bruto) {
               const local: RascunhoLocal = JSON.parse(bruto)
-              if (
-                Number.isFinite(local.atualizadoEm) &&
-                local.atualizadoEm > new Date(d.atualizado_em).getTime() &&
-                local.dados &&
-                typeof local.dados === 'object'
-              ) {
+              if (copiaLocalDevePrevalecer(local, d, dadosCarregados)) {
                 dadosCarregados = { ...dadosVazios(), ...local.dados }
                 setErroSalvamento('Rascunho local recuperado; salvando no servidor.')
               } else {
@@ -134,61 +172,99 @@ export function Formulario() {
     atualizar((d) => ({ ...d, [campo]: valor }))
   }
 
-  // cria o rascunho quando a escola é escolhida no modo novo
+  // Cria (ou retoma) o rascunho da escola escolhida.
   function escolherEscola(eid: string) {
     setEscolaId(eid)
-    if (!eid) return
+    if (!eid || criandoRascunho.current) return
+    criandoRascunho.current = true
     api<Diagnostico>('/api/diagnosticos', {
       method: 'POST',
       body: JSON.stringify({ escola_id: eid }),
     })
-      .then((d) => navegar(`/formulario/${d.id}`, { replace: true }))
+      .then((d) => {
+        baseServidorEm.current = d.atualizado_em
+        navegar(`/formulario/${d.id}`, { replace: true })
+      })
       .catch((e) => setErroFatal((e as Error).message))
+      .finally(() => {
+        criandoRascunho.current = false
+      })
+  }
+
+  // ---- apoio ao salvamento do rascunho ----
+
+  // Guarda a cópia de segurança no navegador (usada quando o envio falha).
+  function guardarCopiaLocal(diagId: string, snapshot: Dados): number {
+    const atualizadoEm = Math.max(Date.now(), ultimaAtualizacaoLocal.current + 1)
+    ultimaAtualizacaoLocal.current = atualizadoEm
+    try {
+      localStorage.setItem(
+        chaveRascunhoLocal(diagId, usuario?.id),
+        JSON.stringify({
+          atualizadoEm,
+          baseServidorEm: baseServidorEm.current,
+          dados: snapshot,
+        } satisfies RascunhoLocal),
+      )
+      erroArmazenamentoLocal.current = false
+    } catch {
+      erroArmazenamentoLocal.current = true
+    }
+    return atualizadoEm
+  }
+
+  // Remove a cópia local apenas quando ela corresponde ao que o servidor confirmou.
+  function limparCopiaLocal(diagId: string, snapshot: Dados, atualizadoEm: number) {
+    try {
+      const chave = chaveRascunhoLocal(diagId, usuario?.id)
+      const bruto = localStorage.getItem(chave)
+      if (!bruto) return
+      const local = JSON.parse(bruto) as RascunhoLocal
+      if (local.atualizadoEm <= atualizadoEm && serializar(local.dados) === serializar(snapshot)) {
+        localStorage.removeItem(chave)
+      }
+    } catch {
+      erroArmazenamentoLocal.current = true
+    }
+  }
+
+  // Enfileira o envio, garantindo que as versões cheguem ao servidor em ordem.
+  function enfileirarSalvamento(diagId: string, snapshot: Dados) {
+    const pedido = filaSalvamento.current.then(() =>
+      api<{ ok: boolean; atualizado_em?: string }>(`/api/diagnosticos/${diagId}/rascunho`, {
+        method: 'PUT',
+        body: JSON.stringify({ dados: snapshot }),
+      }),
+    )
+    filaSalvamento.current = pedido.then(() => undefined, () => undefined)
+    return pedido
+  }
+
+  // Falhas que não adianta repetir (rascunho já enviado, sem permissão, removido).
+  function falhaDefinitiva(erro: unknown): boolean {
+    return erro instanceof ErroAPI && [403, 404, 409].includes(erro.status ?? 0)
   }
 
   // salvamento automático do rascunho
   useEffect(() => {
     if (!diag || diag.status !== 'rascunho') return
+    const diagId = diag.id
     const versao = versaoDados.current
     window.clearTimeout(timer.current)
     window.clearTimeout(retryTimer.current)
     setEstadoSalvamento('pendente')
     setErroSalvamento('')
 
-    const atualizadoEm = Math.max(Date.now(), ultimaAtualizacaoLocal.current + 1)
-    ultimaAtualizacaoLocal.current = atualizadoEm
-    try {
-      localStorage.setItem(
-        chaveRascunhoLocal(diag.id, usuario?.id),
-        JSON.stringify({ atualizadoEm, dados } satisfies RascunhoLocal),
-      )
-      erroArmazenamentoLocal.current = false
-    } catch {
-      erroArmazenamentoLocal.current = true
-    }
+    const atualizadoEm = guardarCopiaLocal(diagId, dados)
 
     function salvar(snapshot: Dados, versaoSnapshot: number) {
       if (versaoSnapshot === versaoDados.current) setEstadoSalvamento('salvando')
-      const request = filaSalvamento.current.then(() =>
-        api(`/api/diagnosticos/${diag.id}/rascunho`, {
-          method: 'PUT',
-          body: JSON.stringify({ dados: snapshot }),
-        }),
-      )
-      filaSalvamento.current = request.then(() => undefined, () => undefined)
-      request.then(
-        () => {
+      enfileirarSalvamento(diagId, snapshot).then(
+        (resposta) => {
+          if (resposta?.atualizado_em) baseServidorEm.current = resposta.atualizado_em
           ultimaVersaoSalva.current = Math.max(ultimaVersaoSalva.current, versaoSnapshot)
           if (versaoSnapshot !== versaoDados.current) return
-          try {
-            const chave = chaveRascunhoLocal(diag.id, usuario?.id)
-            const bruto = localStorage.getItem(chave)
-            if (bruto && JSON.parse(bruto).atualizadoEm <= atualizadoEm) {
-              localStorage.removeItem(chave)
-            }
-          } catch {
-            erroArmazenamentoLocal.current = true
-          }
+          limparCopiaLocal(diagId, snapshot, atualizadoEm)
           setSalvoEm(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
           setEstadoSalvamento('salvo')
           setErroSalvamento(
@@ -196,13 +272,18 @@ export function Formulario() {
           )
         },
         (erro: unknown) => {
+          if (falhaDefinitiva(erro)) {
+            setEstadoSalvamento('erro')
+            setErroSalvamento(
+              `${erro instanceof Error ? erro.message : 'Não foi possível salvar o rascunho.'} ` +
+                'Recarregue a página para continuar — suas alterações ficam guardadas neste navegador.',
+            )
+            return
+          }
           if (versaoSnapshot !== versaoDados.current) return
           setEstadoSalvamento('erro')
           setErroSalvamento(erro instanceof Error ? erro.message : 'Falha ao salvar o rascunho.')
-          retryTimer.current = window.setTimeout(
-            () => salvar(dadosAtuais.current, versaoSnapshot),
-            3000,
-          )
+          retryTimer.current = window.setTimeout(() => salvar(dadosAtuais.current, versaoDados.current), 3000)
         },
       )
     }
@@ -225,16 +306,8 @@ export function Formulario() {
       if (versao <= ultimaVersaoSalva.current || versao === ultimaVersaoKeepalive.current) return
       ultimaVersaoKeepalive.current = versao
 
-      try {
-        const atualizadoEm = Math.max(Date.now(), ultimaAtualizacaoLocal.current + 1)
-        ultimaAtualizacaoLocal.current = atualizadoEm
-        localStorage.setItem(
-          chaveRascunhoLocal(diag.id, usuario?.id),
-          JSON.stringify({ atualizadoEm, dados: dadosAtuais.current } satisfies RascunhoLocal),
-        )
-      } catch {
-        erroArmazenamentoLocal.current = true
-      }
+      const dadosSaida = dadosAtuais.current
+      const atualizadoEm = guardarCopiaLocal(diag.id, dadosSaida)
 
       const token = tokenAtual()
       void fetch(`/api/diagnosticos/${diag.id}/rascunho`, {
@@ -245,13 +318,14 @@ export function Formulario() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ dados: dadosAtuais.current }),
+        body: JSON.stringify({ dados: dadosSaida }),
       }).then((resposta) => {
         if (!resposta.ok && versao === versaoDados.current) {
           setEstadoSalvamento('erro')
           setErroSalvamento('Não foi possível confirmar o salvamento antes de sair.')
         } else if (resposta.ok) {
           ultimaVersaoSalva.current = Math.max(ultimaVersaoSalva.current, versao)
+          limparCopiaLocal(diag.id, dadosSaida, atualizadoEm)
           if (versao === versaoDados.current) {
             setSalvoEm(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
             setEstadoSalvamento('salvo')
@@ -282,62 +356,60 @@ export function Formulario() {
   async function enviar() {
     if (!diag) return
     setPendencias([])
+    // Cancela salvamentos agendados para não competirem com o envio.
+    window.clearTimeout(timer.current)
+    window.clearTimeout(retryTimer.current)
     try {
       const d = await api<Diagnostico>(`/api/diagnosticos/${diag.id}/enviar`, { method: 'POST' })
       setDiag(d)
       setDados({ ...dadosVazios(), ...d.dados })
+      // O rascunho virou envio: a cópia de segurança local não é mais necessária.
+      try {
+        localStorage.removeItem(chaveRascunhoLocal(d.id, usuario?.id))
+      } catch {
+        /* sem acesso ao armazenamento local */
+      }
+      setErroSalvamento('')
+      setEstadoSalvamento('salvo')
+      setSalvoEm(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
       setEnviadoOk(true)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (e) {
       const err = e as ErroAPI
+      if (err.status === 409) {
+        // Já enviado em outra aba/dispositivo: reflete o estado atual do servidor.
+        try {
+          const atual = await api<Diagnostico>(`/api/diagnosticos/${diag.id}`)
+          setDiag(atual)
+          setDados({ ...dadosVazios(), ...atual.dados })
+        } catch {
+          /* mantém o formulário como está */
+        }
+      }
       setPendencias(err.pendencias && err.pendencias.length > 0 ? err.pendencias : [err.message])
     }
   }
 
   async function salvarRascunho() {
-    if (!diag || enviado || estadoSalvamento === 'salvando') return
+    if (!diag || enviado) return
     window.clearTimeout(timer.current)
     window.clearTimeout(retryTimer.current)
 
     const snapshot = dados
     const versao = versaoDados.current
-    const chaveLocal = chaveRascunhoLocal(diag.id, usuario?.id)
-    try {
-      const atualizadoEm = Math.max(Date.now(), ultimaAtualizacaoLocal.current + 1)
-      ultimaAtualizacaoLocal.current = atualizadoEm
-      localStorage.setItem(chaveLocal, JSON.stringify({ atualizadoEm, dados: snapshot } satisfies RascunhoLocal))
-    } catch {
-      erroArmazenamentoLocal.current = true
-    }
+    const atualizadoEm = guardarCopiaLocal(diag.id, snapshot)
 
     setEstadoSalvamento('salvando')
     setErroSalvamento('')
-    const request = filaSalvamento.current.then(() =>
-      api<{ ok: boolean }>(`/api/diagnosticos/${diag.id}/rascunho`, {
-        method: 'PUT',
-        body: JSON.stringify({ dados: snapshot }),
-      }),
-    )
-    filaSalvamento.current = request.then(() => undefined, () => undefined)
-
     try {
-      await request
+      const resposta = await enfileirarSalvamento(diag.id, snapshot)
+      if (resposta?.atualizado_em) baseServidorEm.current = resposta.atualizado_em
       ultimaVersaoSalva.current = Math.max(ultimaVersaoSalva.current, versao)
       if (versao !== versaoDados.current) {
         setEstadoSalvamento('pendente')
         return
       }
-      try {
-        const bruto = localStorage.getItem(chaveLocal)
-        if (bruto) {
-          const local = JSON.parse(bruto) as RascunhoLocal
-          if (local.dados && JSON.stringify(local.dados) === JSON.stringify(snapshot)) {
-            localStorage.removeItem(chaveLocal)
-          }
-        }
-      } catch {
-        erroArmazenamentoLocal.current = true
-      }
+      limparCopiaLocal(diag.id, snapshot, atualizadoEm)
       setSalvoEm(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
       setEstadoSalvamento('salvo')
       setErroSalvamento('')
@@ -461,7 +533,7 @@ export function Formulario() {
         <div className="rascunho-barra" role="region" aria-label="Salvar rascunho">
           <div className="rascunho-barra-texto">
             <strong>Continue quando quiser</strong>
-            <span>Salve seu rascunho e retome depois em “Editar rascunho”.</span>
+            <span>Salve seu rascunho e retome depois pelo botão “Continuar rascunho” no painel.</span>
             {estadoSalvamento === 'erro' && (
               <span className="indicador-salvo-erro" role="alert">{erroSalvamento}</span>
             )}

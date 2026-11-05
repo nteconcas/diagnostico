@@ -110,14 +110,22 @@ func (s *Servidor) diagCriar(w http.ResponseWriter, r *http.Request) {
                 negadoEscola(w)
                 return
         }
-        // se já existe rascunho para a escola, devolve o existente (continuar preenchimento)
+        // Se já existe rascunho para a escola, devolve o existente para continuar
+        // o preenchimento em vez de criar um registro novo.
         var id, status string
         err = s.pool.QueryRow(r.Context(),
-                `SELECT id::text, status FROM diagnosticos WHERE escola_id = $1 AND status = 'rascunho'`,
+                `SELECT id::text, status FROM diagnosticos
+                 WHERE escola_id = $1 AND status = 'rascunho'
+                 ORDER BY atualizado_em DESC
+                 LIMIT 1`,
                 corpo.EscolaID).Scan(&id, &status)
         if err == nil {
-                d, _ := s.carregarDiagnostico(r.Context(), id)
-                writeJSON(w, 200, d)
+                existente, falha := s.carregarDiagnostico(r.Context(), id)
+                if falha != nil {
+                        erroJSON(w, 500, "Erro ao carregar o rascunho existente")
+                        return
+                }
+                writeJSON(w, 200, existente)
                 return
         }
         if !errors.Is(err, pgx.ErrNoRows) {
@@ -194,25 +202,34 @@ func (s *Servidor) diagSalvarRascunho(w http.ResponseWriter, r *http.Request) {
                 erroJSON(w, 500, "Erro ao processar dados")
                 return
         }
-        ct, err := s.pool.Exec(r.Context(), `
+        var atualizadoEm time.Time
+        err = s.pool.QueryRow(r.Context(), `
                 UPDATE diagnosticos
                 SET dados = $2, atualizado_por = $3, atualizado_em = now()
-                WHERE id = $1 AND status = 'rascunho'`, id, brutos, u.ID)
-        if err != nil {
-                erroJSON(w, 500, "Erro ao salvar rascunho")
-                return
-        }
-        if ct.RowsAffected() == 0 {
+                WHERE id = $1 AND status = 'rascunho'
+                RETURNING atualizado_em`, id, brutos, u.ID).Scan(&atualizadoEm)
+        if errors.Is(err, pgx.ErrNoRows) {
+                // Nenhuma linha alterada: o diagnóstico já foi enviado ou não existe.
                 var status string
-                err := s.pool.QueryRow(r.Context(), `SELECT status FROM diagnosticos WHERE id = $1`, id).Scan(&status)
-                if errors.Is(err, pgx.ErrNoRows) {
+                errStatus := s.pool.QueryRow(r.Context(),
+                        `SELECT status FROM diagnosticos WHERE id = $1`, id).Scan(&status)
+                if errors.Is(errStatus, pgx.ErrNoRows) {
                         erroJSON(w, 404, "Diagnóstico não encontrado")
+                        return
+                }
+                if errStatus != nil {
+                        erroJSON(w, 500, "Erro ao verificar diagnóstico")
                         return
                 }
                 erroJSON(w, 409, "Este diagnóstico já foi enviado e não pode mais ser alterado")
                 return
         }
-        writeJSON(w, 200, map[string]bool{"ok": true})
+        if err != nil {
+                erroJSON(w, 500, "Erro ao salvar rascunho")
+                return
+        }
+        // atualizado_em volta para o cliente acompanhar a versão gravada.
+        writeJSON(w, 200, map[string]any{"ok": true, "atualizado_em": atualizadoEm})
 }
 
 func (s *Servidor) diagEnviar(w http.ResponseWriter, r *http.Request) {
