@@ -122,7 +122,7 @@ const tplHTML = `<!DOCTYPE html>
   {{if .Espacos}}
   <div class="secao">
     <h3><small>Seção 3</small>Espaços da escola</h3>
-    {{range .Espacos}}<div class="espaco"><h4>{{.Nome}}</h4>{{galeria .Fotos}}</div>{{end}}
+    {{range .Espacos}}<div class="espaco"><h4>{{.Nome}}</h4>{{if .Descricao}}<p>{{.Descricao}}</p>{{end}}{{galeria .Fotos}}</div>{{end}}
   </div>
   {{end}}
 

@@ -33,8 +33,9 @@ type LabRep struct {
 }
 
 type EspacoRep struct {
-        Nome  string
-        Fotos []FotoRep
+        Nome      string
+        Descricao string
+        Fotos     []FotoRep
 }
 
 type ProjetoRep struct {
@@ -149,7 +150,7 @@ func Montar(e Entrada) Reporte {
                 re.LabsOutros = append(re.LabsOutros, LabRep{lo.Nome, lo.Descricao, paraFotos(lo.Fotos)})
         }
         for _, esp := range d.Espacos {
-                re.Espacos = append(re.Espacos, EspacoRep{esp.Nome, paraFotos(esp.Fotos)})
+                re.Espacos = append(re.Espacos, EspacoRep{Nome: esp.Nome, Descricao: esp.Descricao, Fotos: paraFotos(esp.Fotos)})
         }
         for _, p := range d.Projetos {
                 re.Projetos = append(re.Projetos, ProjetoRep{p.Nome, p.Descricao, paraFotos(p.Fotos)})

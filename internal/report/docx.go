@@ -266,6 +266,7 @@ func (d *docxBuilder) montar(re Reporte) {
 		d.pSecao("Seção 3", "Espaços da escola")
 		for _, e := range re.Espacos {
 			d.corpo.WriteString("<w:p>" + d.pPPr("", 40) + d.run(`<w:b/><w:color w:val="15803D"/><w:sz w:val="24"/>`, e.Nome) + "</w:p>")
+			d.pTexto(e.Descricao)
 			d.galeria(e.Fotos)
 		}
 	}

@@ -329,6 +329,12 @@ func RenderPDF(re Reporte) ([]byte, error) {
                         p.f.SetTextColor(corVerde[0], corVerde[1], corVerde[2])
                         p.f.SetX(15)
                         p.f.CellFormat(0, 6, p.tr(e.Nome), "", 1, "L", false, 0, "")
+                        if e.Descricao != "" {
+                                p.f.SetFont("Helvetica", "", 9.5)
+                                p.f.SetTextColor(corTinta[0], corTinta[1], corTinta[2])
+                                p.f.SetX(15)
+                                p.f.MultiCell(180, 5.2, p.tr(e.Descricao), "", "L", false)
+                        }
                         p.galeria(e.Fotos, "")
                 }
         }

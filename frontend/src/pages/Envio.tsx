@@ -265,6 +265,7 @@ export function Envio() {
               {d.espacos.map((e, i) => (
                 <div className="subcartao" key={i}>
                   <h4>{e.nome}</h4>
+                  {e.descricao && <p className="espaco-descricao">{e.descricao}</p>}
                   {e.fotos.length > 0 && (
                     <div className="galeria-mini">
                       {e.fotos.map((f) => (

@@ -522,6 +522,10 @@ table.dados tr:hover td { background: #f8fbff; }
 }
 .formulario-pagina .aviso { border-radius: 14px; line-height: 1.6; }
 .formulario-pagina #revisao .btn-verde { min-height: 48px; padding: 12px 22px; }
+.espaco-editor { display: grid; gap: 14px; }
+.espaco-editor-cabeca { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.espaco-editor-cabeca h4 { margin: 0; }
+.espaco-descricao { margin: 8px 0; white-space: pre-wrap; font-size: 13.5px; }
 
 @media (max-width: 640px) {
   main.pagina { padding: 16px 12px calc(40px + env(safe-area-inset-bottom)); }

@@ -58,6 +58,7 @@ export interface LabOutro {
 
 export interface Espaco {
   nome: string
+  descricao: string
   fotos: Foto[]
 }
 

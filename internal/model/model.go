@@ -124,8 +124,9 @@ type Labs struct {
 }
 
 type Espaco struct {
-        Nome string `json:"nome"`
-        Fotos []Foto `json:"fotos"`
+        Nome      string `json:"nome"`
+        Descricao string `json:"descricao"`
+        Fotos     []Foto `json:"fotos"`
 }
 
 type Projeto struct {
@@ -228,11 +229,12 @@ func (d *Dados) Normalizar() {
         vistos := map[string]bool{}
         for _, e := range d.Espacos {
                 e.Nome = strings.TrimSpace(e.Nome)
+                e.Descricao = strings.TrimSpace(e.Descricao)
                 if e.Nome == "" || vistos[strings.ToLower(e.Nome)] {
                         continue
                 }
                 vistos[strings.ToLower(e.Nome)] = true
-                e.Fotos = limiteFotos(e.Fotos, 6)
+                e.Fotos = limiteFotos(e.Fotos, 3)
                 espacos = append(espacos, e)
         }
         d.Espacos = espacos

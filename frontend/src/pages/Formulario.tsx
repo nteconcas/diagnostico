@@ -775,7 +775,7 @@ export function Formulario() {
           numero="3"
           verde
           titulo="Espaços da escola"
-          descricao="Biblioteca, refeitório, áreas externas e outros espaços, com fotos."
+          descricao="Informe o nome e a descrição de cada espaço e adicione até 3 fotos."
         >
           {!enviado && (
             <div>
@@ -791,7 +791,7 @@ export function Formulario() {
                     type="button"
                     className="chip-sugestao"
                     disabled={dados.espacos.some((e) => e.nome.toLowerCase() === s.toLowerCase())}
-                    onClick={() => set('espacos', [...dados.espacos, { nome: s, fotos: [] }])}
+                    onClick={() => set('espacos', [...dados.espacos, { nome: s, descricao: '', fotos: [] }])}
                   >
                     ＋ {s}
                   </button>
@@ -812,7 +812,7 @@ export function Formulario() {
                   className="btn-suave"
                   disabled={!novoEspaco.trim()}
                   onClick={() => {
-                    set('espacos', [...dados.espacos, { nome: novoEspaco.trim(), fotos: [] }])
+                    set('espacos', [...dados.espacos, { nome: novoEspaco.trim(), descricao: '', fotos: [] }])
                     setNovoEspaco('')
                   }}
                 >
@@ -826,9 +826,9 @@ export function Formulario() {
             <div className="vazio">Nenhum espaço adicionado ainda. Use as sugestões acima ou inclua outro espaço.</div>
           ) : (
             dados.espacos.map((esp, i) => (
-              <div className="subcartao" key={i}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <h4 style={{ margin: 0 }}>{esp.nome}</h4>
+              <div className="subcartao espaco-editor" key={i}>
+                <div className="espaco-editor-cabeca">
+                  <h4>Espaço {i + 1}</h4>
                   {!enviado && (
                     <button
                       type="button"
@@ -839,10 +839,31 @@ export function Formulario() {
                     </button>
                   )}
                 </div>
+                <CampoTexto
+                  rotulo="Nome do espaço"
+                  valor={esp.nome}
+                  onChange={(v) => {
+                    const espacos = [...dados.espacos]
+                    espacos[i] = { ...espacos[i], nome: v }
+                    set('espacos', espacos)
+                  }}
+                  placeholder="Ex.: Biblioteca, quadra, horta…"
+                />
+                <Campo rotulo="Descrição do espaço" opcional>
+                  <textarea
+                    value={esp.descricao ?? ''}
+                    onChange={(e) => {
+                      const espacos = [...dados.espacos]
+                      espacos[i] = { ...espacos[i], descricao: e.target.value }
+                      set('espacos', espacos)
+                    }}
+                    placeholder="Descreva as características e condições deste espaço."
+                  />
+                </Campo>
                 <FotoUpload
                   fotos={esp.fotos}
                   escolaId={escolaAtualId}
-                  max={6}
+                  max={3}
                   textoBotao="Adicionar fotos"
                   onChange={(fs) => {
                     const espacos = [...dados.espacos]
